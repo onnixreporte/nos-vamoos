@@ -40,7 +40,7 @@ export function AgentSessionsBarChart({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">
-          Sesiones por agente (top {limit})
+          Sesiones por agente
         </CardTitle>
       </CardHeader>
       <CardContent>
