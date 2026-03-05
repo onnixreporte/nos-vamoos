@@ -1,11 +1,12 @@
 import { format, parseISO, startOfDay, startOfHour } from "date-fns";
 import { es } from "date-fns/locale";
 import type { AgentMetricsItem, ChatWithMessagesResponse } from "@/types/botmaker";
+import { toPYTime } from "@/lib/date-filters";
 
 export interface OverviewKpis {
   totalConversations: number;
   totalSalesAmount: number;
-  closedSessions: number;
+  closedConversations: number;
   avgFirstResponseMs: number;
 }
 
@@ -32,11 +33,13 @@ export function computeOverviewKpis(
     }
   }
 
-  let closedSessions = 0;
+  const closedConversationIds = new Set<string>();
   let firstResponseSumMs = 0;
   let firstResponseCount = 0;
   for (const item of agentItems) {
-    closedSessions += parseNum(item.closedSessions);
+    if (item.chatId && parseNum(item.closedSessions) > 0) {
+      closedConversationIds.add(item.chatId);
+    }
     const ms = parseNum(item.fromOpAssignedToOpFirstResponse);
     if (ms > 0) {
       firstResponseSumMs += ms;
@@ -49,7 +52,7 @@ export function computeOverviewKpis(
   return {
     totalConversations,
     totalSalesAmount,
-    closedSessions,
+    closedConversations: closedConversationIds.size,
     avgFirstResponseMs,
   };
 }
@@ -74,7 +77,7 @@ export function groupConversationsByTime(
     if (!raw) continue;
     let date: Date;
     try {
-      date = parseISO(raw);
+      date = toPYTime(parseISO(raw));
     } catch {
       continue;
     }
@@ -121,13 +124,30 @@ export interface ChannelCount {
   count: number;
 }
 
+export function normalizeChannelId(channelId: string): string {
+  const raw = channelId.trim();
+  const normalized = raw.toLowerCase();
+
+  const platformMatch = normalized.match(/^[^-]+-(.+?)-[^-]+$/);
+  const platform = platformMatch?.[1] ?? normalized;
+
+  if (platform === "instagram_chat" || platform === "instagram_media") {
+    return "Instagram";
+  }
+  if (platform === "whatsapp") return "WhatsApp";
+  if (platform === "messenger") return "Messenger";
+  if (platform === "webchat") return "Webchat";
+
+  return raw;
+}
+
 /**
  * Count chats by channelId.
  */
 export function countByChannel(chats: ChatWithMessagesResponse[]): ChannelCount[] {
   const counts = new Map<string, number>();
   for (const chat of chats) {
-    const ch = chat.chat?.channelId ?? "unknown";
+    const ch = normalizeChannelId(chat.chat?.channelId ?? "unknown");
     counts.set(ch, (counts.get(ch) ?? 0) + 1);
   }
   return Array.from(counts.entries())
@@ -159,7 +179,7 @@ export function groupByHourAndDay(
     if (!raw) continue;
     let date: Date;
     try {
-      date = parseISO(raw);
+      date = toPYTime(parseISO(raw));
     } catch {
       continue;
     }
@@ -209,7 +229,7 @@ export function groupChatsByDayOfMonth(
     if (!raw) continue;
     let date: Date;
     try {
-      date = parseISO(raw);
+      date = toPYTime(parseISO(raw));
     } catch {
       continue;
     }

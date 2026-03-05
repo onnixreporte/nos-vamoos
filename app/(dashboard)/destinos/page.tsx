@@ -25,6 +25,7 @@ import {
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
 } from "@/lib/dashboard-filters";
+import { isTestChat } from "@/lib/test-contacts";
 import type {
   ChatWithMessagesResponse,
   ChatsPage,
@@ -87,7 +88,8 @@ export default function DestinosPage() {
       try {
         const chatList = await fetchAllChats();
         if (cancelled) return;
-        setChats(chatList);
+        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        setChats(nonTestChats);
       } catch (err) {
         if (!cancelled) {
           setError(

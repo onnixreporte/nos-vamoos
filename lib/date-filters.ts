@@ -1,4 +1,11 @@
 import { endOfDay, startOfDay, startOfMonth, subDays } from "date-fns";
+import { TZDate } from "@date-fns/tz";
+
+export const PY_TZ = "America/Asuncion";
+
+export function toPYTime(date: Date): TZDate {
+  return new TZDate(date, PY_TZ);
+}
 
 export type FilterPreset = "today" | "yesterday" | "week" | "month" | "custom";
 
@@ -9,13 +16,13 @@ export interface DateFilter {
 }
 
 export function formatForApi(date: Date): string {
-  return date.toISOString().replace(/\.\d{3}Z$/, "Z");
+  return new Date(date.getTime()).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 export function buildPresetRange(
   preset: "today" | "yesterday" | "week" | "month"
 ): DateFilter {
-  const now = new Date();
+  const now = new TZDate(new Date(), PY_TZ);
   let start: Date;
   let end: Date = endOfDay(now);
   let longTerm = false;
@@ -49,7 +56,7 @@ export function toIsoWithTime(date: Date, time: string, asEnd = false): string {
   const parts = time.split(":");
   const hours = Number(parts[0] ?? 0);
   const minutes = Number(parts[1] ?? 0);
-  const composed = new Date(date);
+  const composed = new TZDate(date, PY_TZ);
   composed.setHours(hours, minutes, asEnd ? 59 : 0, asEnd ? 999 : 0);
   return formatForApi(composed);
 }

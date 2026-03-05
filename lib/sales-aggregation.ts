@@ -1,6 +1,11 @@
 import { format, parseISO, startOfDay, startOfHour } from "date-fns";
 import { es } from "date-fns/locale";
 import type { AgentMetricsItem, ChatWithMessagesResponse } from "@/types/botmaker";
+import { toPYTime } from "@/lib/date-filters";
+import {
+  normalizeTypification,
+  isTestTypification,
+} from "@/lib/dashboard-filters";
 
 function parseNum(s: string | undefined): number {
   if (s == null || s === "") return 0;
@@ -80,7 +85,8 @@ export function countByTypification(
   for (const item of agentItems) {
     const raw = item.typification?.trim();
     if (!raw) continue;
-    counts.set(raw, (counts.get(raw) ?? 0) + 1);
+    const normalized = normalizeTypification(raw);
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
   }
   return Array.from(counts.entries())
     .map(([label, count]) => ({ label, count }))
@@ -88,18 +94,8 @@ export function countByTypification(
 }
 
 // ---------------------------------------------------------------------------
-// Tags
+// Tags (raw values from chat.tags column)
 // ---------------------------------------------------------------------------
-
-const KNOWN_TAGS = new Set([
-  "Contacto No Efectivo",
-  "Información Enviada",
-  "En Cotización",
-  "Cotización Enviada",
-  "Cotización Rechazada",
-  "Cotización Aprobada",
-  "Venta Concretada",
-]);
 
 export function countByTag(chats: ChatWithMessagesResponse[]): LabelCount[] {
   const counts = new Map<string, number>();
@@ -108,8 +104,7 @@ export function countByTag(chats: ChatWithMessagesResponse[]): LabelCount[] {
     for (const tag of chat.tags) {
       const trimmed = tag.trim();
       if (!trimmed) continue;
-      const key = KNOWN_TAGS.has(trimmed) ? trimmed : "Otros";
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      counts.set(trimmed, (counts.get(trimmed) ?? 0) + 1);
     }
   }
   return Array.from(counts.entries())
@@ -230,7 +225,7 @@ export function groupSalesByTime(
     if (!raw) continue;
     let date: Date;
     try {
-      date = parseISO(raw);
+      date = toPYTime(parseISO(raw));
     } catch {
       continue;
     }

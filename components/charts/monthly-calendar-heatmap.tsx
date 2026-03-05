@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DayOfMonthBucket } from "@/lib/dashboard-aggregation";
+import { toPYTime } from "@/lib/date-filters";
 
 interface MonthlyCalendarHeatmapProps {
   data: DayOfMonthBucket[];
   year: number;
   month: number;
+  filterFrom?: string;
+  filterTo?: string;
 }
 
 function getIntensityColor(count: number, max: number): string {
@@ -21,10 +24,46 @@ function getIntensityColor(count: number, max: number): string {
   return "hsl(12 76% 61% / 0.2)";
 }
 
+function getActiveRange(
+  year: number,
+  month: number,
+  filterFrom?: string,
+  filterTo?: string,
+): { startDay: number; endDay: number } | null {
+  if (!filterFrom || !filterTo) return null;
+
+  try {
+    const from = toPYTime(parseISO(filterFrom));
+    const to = toPYTime(parseISO(filterTo));
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const fromInMonth =
+      from.getFullYear() === year && from.getMonth() === month - 1;
+    const toInMonth =
+      to.getFullYear() === year && to.getMonth() === month - 1;
+
+    if (!fromInMonth && !toInMonth) {
+      if (from < new Date(year, month - 1, 1) && to >= new Date(year, month, 0)) {
+        return { startDay: 1, endDay: daysInMonth };
+      }
+      return null;
+    }
+
+    const startDay = fromInMonth ? from.getDate() : 1;
+    const endDay = toInMonth ? to.getDate() : daysInMonth;
+
+    return { startDay, endDay };
+  } catch {
+    return null;
+  }
+}
+
 export function MonthlyCalendarHeatmap({
   data,
   year,
   month,
+  filterFrom,
+  filterTo,
 }: MonthlyCalendarHeatmapProps) {
   const { byDay, maxCount, firstDayOffset } = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -41,6 +80,11 @@ export function MonthlyCalendarHeatmap({
       firstDayOffset: firstDayOfWeek,
     };
   }, [data, year, month]);
+
+  const activeRange = useMemo(
+    () => getActiveRange(year, month, filterFrom, filterTo),
+    [year, month, filterFrom, filterTo],
+  );
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const monthName = format(new Date(year, month - 1, 1), "MMMM yyyy", {
@@ -73,10 +117,17 @@ export function MonthlyCalendarHeatmap({
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1;
             const count = byDay.get(day) ?? 0;
+            const inRange =
+              activeRange != null &&
+              day >= activeRange.startDay &&
+              day <= activeRange.endDay;
+
             return (
               <div
                 key={day}
-                className="aspect-square rounded-sm p-1 text-center text-[10px] transition-colors"
+                className={`aspect-square rounded-sm p-1 text-center text-[10px] transition-colors ${
+                  inRange ? "ring-1 ring-primary/50" : ""
+                } ${!inRange && activeRange != null ? "opacity-40" : ""}`}
                 style={{
                   backgroundColor: getIntensityColor(count, maxCount),
                 }}

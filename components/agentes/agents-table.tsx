@@ -24,8 +24,10 @@ function agentMatchesSearch(agent: AgentSummary, query: string): boolean {
     agent.agentName,
     agent.queue,
     agent.topTypification,
-    String(agent.closedSessions),
-    String(agent.openSessions),
+    agent.isOnline != null ? (agent.isOnline ? "verdadero" : "falso") : "",
+    agent.status ?? "",
+    String(agent.closedConversations),
+    String(agent.openConversations),
     String(agent.onHold),
     String(agent.totalResponses),
     String(agent.transfersIn),
@@ -82,11 +84,17 @@ export function AgentsTable({ agents }: AgentsTableProps) {
               <TableHead className="sticky top-0 z-10 min-w-[120px] bg-background">
                 Cola
               </TableHead>
-              <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background text-right">
-                Cerradas
+              <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background">
+                En línea
+              </TableHead>
+              <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background">
+                Estado
               </TableHead>
               <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background text-right">
-                Abiertas
+                Conv. cerradas
+              </TableHead>
+              <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background text-right">
+                Conv. abiertas
               </TableHead>
               <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background text-right">
                 En espera
@@ -106,7 +114,7 @@ export function AgentsTable({ agents }: AgentsTableProps) {
             {pageAgents.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={10}
                   className="h-24 text-center text-muted-foreground"
                 >
                   {searchQuery.trim()
@@ -123,11 +131,21 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                   <TableCell className="text-muted-foreground">
                     {agent.queue || "—"}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {agent.closedSessions}
+                  <TableCell>
+                    {agent.isOnline === true
+                      ? "Verdadero"
+                      : agent.isOnline === false
+                        ? "Falso"
+                        : "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {agent.status ?? "—"}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {agent.openSessions}
+                    {agent.closedConversations}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {agent.openConversations}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {agent.onHold}

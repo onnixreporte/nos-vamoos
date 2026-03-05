@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartConfig,
@@ -16,9 +16,13 @@ interface AgentSessionsBarChartProps {
 }
 
 const chartConfig = {
-  sessions: {
-    label: "Sesiones cerradas",
+  closed: {
+    label: "Cerradas",
     color: "var(--chart-1)",
+  },
+  open: {
+    label: "Abiertas",
+    color: "var(--chart-2)",
   },
   agent: {
     label: "Agente",
@@ -33,14 +37,15 @@ export function AgentSessionsBarChart({
     .slice(0, limit)
     .map((a) => ({
       agent: a.agentName || a.agentId || "Sin nombre",
-      sessions: a.closedSessions,
+      closed: a.closedConversations,
+      open: a.openConversations,
     }));
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">
-          Sesiones por agente
+          Conversaciones por agente
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -58,9 +63,23 @@ export function AgentSessionsBarChart({
             />
             <YAxis tickLine={false} axisLine={false} />
             <ChartTooltip content={<ChartTooltipContent />} />
+            <Legend
+              verticalAlign="top"
+              align="right"
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 11, paddingBottom: 4 }}
+            />
             <Bar
-              dataKey="sessions"
-              fill="var(--color-sessions)"
+              dataKey="closed"
+              stackId="a"
+              fill="var(--color-closed)"
+              radius={[0, 0, 0, 0]}
+            />
+            <Bar
+              dataKey="open"
+              stackId="a"
+              fill="var(--color-open)"
               radius={[4, 4, 0, 0]}
             />
           </BarChart>

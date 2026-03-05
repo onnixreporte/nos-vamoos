@@ -32,17 +32,17 @@ function weightedAvg(
 }
 
 export function AgentKpiCards({ agents }: AgentKpiCardsProps) {
-  const totalClosed = agents.reduce((s, a) => s + a.closedSessions, 0);
+  const totalClosed = agents.reduce((s, a) => s + a.closedConversations, 0);
   const totalOnHold = agents.reduce((s, a) => s + a.onHold, 0);
   const avgFirstResponseMs = weightedAvg(
     agents,
     (a) => a.avgFirstResponseMs,
-    (a) => a.closedSessions
+    (a) => a.closedConversations
   );
   const avgAttendingMs = weightedAvg(
     agents,
     (a) => a.avgAttendingTimeMs,
-    (a) => a.closedSessions
+    (a) => a.closedConversations
   );
 
   return (
@@ -51,7 +51,7 @@ export function AgentKpiCards({ agents }: AgentKpiCardsProps) {
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <MessageSquare className="size-3.5" />
-            Sesiones cerradas
+            Conversaciones cerradas
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -88,7 +88,7 @@ export function AgentKpiCards({ agents }: AgentKpiCardsProps) {
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <Pause className="size-3.5" />
-            Sesiones en espera
+            Conversaciones en espera
           </CardTitle>
         </CardHeader>
         <CardContent>

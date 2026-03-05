@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
+import { parseISO, eachDayOfInterval } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  groupByHourAndDay,
   getDayLabel,
   type HourDayBucket,
 } from "@/lib/dashboard-aggregation";
+import { toPYTime } from "@/lib/date-filters";
 
 interface ContactScheduleHeatmapProps {
   data: HourDayBucket[];
+  filterFrom?: string;
+  filterTo?: string;
 }
 
 function getIntensityColor(count: number, max: number): string {
@@ -21,7 +24,27 @@ function getIntensityColor(count: number, max: number): string {
   return "hsl(12 76% 61% / 0.2)";
 }
 
-export function ContactScheduleHeatmap({ data }: ContactScheduleHeatmapProps) {
+function getVisibleDays(filterFrom?: string, filterTo?: string): number[] {
+  if (!filterFrom || !filterTo) return [0, 1, 2, 3, 4, 5, 6];
+
+  try {
+    const from = toPYTime(parseISO(filterFrom));
+    const to = toPYTime(parseISO(filterTo));
+    const days = eachDayOfInterval({ start: from, end: to });
+    const daySet = new Set(days.map((d) => d.getDay()));
+    if (daySet.size >= 7) return [0, 1, 2, 3, 4, 5, 6];
+    const ordered = [1, 2, 3, 4, 5, 6, 0];
+    return ordered.filter((d) => daySet.has(d));
+  } catch {
+    return [0, 1, 2, 3, 4, 5, 6];
+  }
+}
+
+export function ContactScheduleHeatmap({
+  data,
+  filterFrom,
+  filterTo,
+}: ContactScheduleHeatmapProps) {
   const { grid, maxCount } = useMemo(() => {
     const max = Math.max(1, ...data.map((d) => d.count));
     const g: Record<string, number> = {};
@@ -30,6 +53,11 @@ export function ContactScheduleHeatmap({ data }: ContactScheduleHeatmapProps) {
     }
     return { grid: g, maxCount: max };
   }, [data]);
+
+  const visibleDays = useMemo(
+    () => getVisibleDays(filterFrom, filterTo),
+    [filterFrom, filterTo],
+  );
 
   return (
     <Card>
@@ -59,7 +87,7 @@ export function ContactScheduleHeatmap({ data }: ContactScheduleHeatmapProps) {
               </div>
             </div>
             <div className="space-y-0.5">
-              {[0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => (
+              {visibleDays.map((dayOfWeek) => (
                 <div key={dayOfWeek} className="flex items-center gap-1">
                   <span className="w-8 shrink-0 text-right text-[10px] text-muted-foreground">
                     {getDayLabel(dayOfWeek)}

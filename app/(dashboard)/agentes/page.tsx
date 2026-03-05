@@ -11,12 +11,46 @@ import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
 import {
   buildAdditionalFilterOptions,
   DEFAULT_ADDITIONAL_FILTERS,
+  normalizeTypification,
 } from "@/lib/dashboard-filters";
-import type { AgentMetricsItem, AgentMetricsPage } from "@/types/botmaker";
+import type {
+  AgentListItem,
+  AgentMetricsItem,
+  AgentMetricsPage,
+  AgentSummary,
+  AgentsListPage,
+} from "@/types/botmaker";
+
+function emptySummaryFromAgent(a: AgentListItem): AgentSummary {
+  const name = (a.name ?? a.email ?? a.id ?? "").trim() || "—";
+  const queue = a.queues?.[0] ?? "";
+  return {
+    agentId: a.id,
+    agentName: name,
+    queue,
+    totalConversations: 0,
+    closedConversations: 0,
+    openConversations: 0,
+    onHold: 0,
+    avgFirstResponseMs: 0,
+    avgAttendingTimeMs: 0,
+    totalResponses: 0,
+    transfersIn: 0,
+    transfersOut: 0,
+    closedWithNoMessages: 0,
+    timeouts: 0,
+    typifications: {},
+    topTypification: "—",
+    isOnline: a.isOnline,
+    status: a.status,
+  };
+}
 
 export default function AgentesPage() {
+  const [agentsList, setAgentsList] = useState<AgentListItem[]>([]);
   const [rawItems, setRawItems] = useState<AgentMetricsItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingAgents, setLoadingAgents] = useState(true);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
     buildPresetRange("week"),
@@ -32,17 +66,53 @@ export default function AgentesPage() {
     return unregisterRefresh;
   }, [registerRefresh, unregisterRefresh]);
 
+  // Fetch all agents (list with isOnline, status) — no date filter
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+    setLoadingAgents(true);
+    (async () => {
+      try {
+        let url: string | null = "/api/agents";
+        const acc: AgentListItem[] = [];
+        while (url) {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Error ${res.status}`);
+          const page = (await res.json()) as AgentsListPage;
+          if (cancelled) return;
+          acc.push(...(page.items ?? []));
+          url =
+            page.nextPage != null && page.nextPage !== ""
+              ? `/api/agents?nextPage=${encodeURIComponent(page.nextPage)}`
+              : null;
+        }
+        if (!cancelled) setAgentsList(acc);
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Error al cargar lista de agentes"
+          );
+          setAgentsList([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingAgents(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshTrigger]);
+
   useEffect(() => {
     if (!appliedFilter?.from || !appliedFilter?.to) {
       setRawItems([]);
-      setLoading(false);
-      setError(null);
+      setLoadingMetrics(false);
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
     setError(null);
+    setLoadingMetrics(true);
 
     const fetchAllPages = async (
       status: string
@@ -83,7 +153,7 @@ export default function AgentesPage() {
           setRawItems([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoadingMetrics(false);
       }
     })();
 
@@ -107,7 +177,8 @@ export default function AgentesPage() {
       }
       if (
         additionalFilters.typification !== "all" &&
-        (item.typification?.trim() ?? "") !== additionalFilters.typification
+        normalizeTypification(item.typification?.trim() ?? "") !==
+          additionalFilters.typification
       ) {
         return false;
       }
@@ -115,7 +186,18 @@ export default function AgentesPage() {
     });
   }, [rawItems, additionalFilters]);
 
-  const agents = useMemo(() => aggregateByAgent(filteredRawItems), [filteredRawItems]);
+  const metricsByAgentId = useMemo(() => {
+    const summaries = aggregateByAgent(filteredRawItems);
+    return new Map(summaries.map((s) => [s.agentId, s]));
+  }, [filteredRawItems]);
+
+  const agents = useMemo(() => {
+    return agentsList.map((agent) => {
+      const fromMetrics = metricsByAgentId.get(agent.id);
+      const base = fromMetrics ?? emptySummaryFromAgent(agent);
+      return { ...base, isOnline: agent.isOnline, status: agent.status };
+    });
+  }, [agentsList, metricsByAgentId]);
 
   return (
     <div className="min-w-0 space-y-6">
@@ -135,10 +217,16 @@ export default function AgentesPage() {
         additionalFilterOptions={filterOptions}
       />
 
-      {loading ? (
+      {loadingAgents || loadingMetrics ? (
         <div className="flex items-center justify-center gap-2 rounded-md border py-12 text-muted-foreground">
           <Loader2 className="size-5 animate-spin" />
-          <span>Cargando métricas…</span>
+          <span>
+            {loadingAgents && loadingMetrics
+              ? "Cargando agentes y métricas…"
+              : loadingAgents
+                ? "Cargando agentes…"
+                : "Cargando métricas…"}
+          </span>
         </div>
       ) : error ? (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">

@@ -4,12 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { SalesKpiCards } from "@/components/ventas/sales-kpi-cards";
 import { SalesTable } from "@/components/ventas/sales-table";
-import { TypificationPieChart } from "@/components/charts/typification-pie-chart";
-import { TagsPieChart } from "@/components/charts/tags-pie-chart";
+import { LabelCountTable } from "@/components/ventas/label-count-table";
 import { TopSalesAgentsBarChart } from "@/components/charts/top-sales-agents-bar-chart";
 import { TopSoldDestinationsBarChart } from "@/components/charts/top-sold-destinations-bar-chart";
 import { SalesAreaChart } from "@/components/charts/sales-area-chart";
-import { SalesPackageTypeDonutChart } from "@/components/charts/sales-package-type-donut-chart";
 import { DateFilterBar } from "@/components/filters/date-filter-bar";
 import { useRefreshContext } from "@/store/refresh-context";
 import {
@@ -28,6 +26,7 @@ import {
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
 } from "@/lib/dashboard-filters";
+import { isTestChat } from "@/lib/test-contacts";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -125,7 +124,8 @@ export default function VentasPage() {
           fetchAllAgentMetrics("closed"),
         ]);
         if (cancelled) return;
-        setChats(chatList);
+        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        setChats(nonTestChats);
         setAgentItems([...closedItems, ...openItems]);
       } catch (err) {
         if (!cancelled) {
@@ -237,9 +237,21 @@ export default function VentasPage() {
           <SalesKpiCards kpis={kpis} />
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <TypificationPieChart data={typificationData} />
-            <TagsPieChart data={tagsData} />
-            <SalesPackageTypeDonutChart data={packageTypesSalesData} />
+            <LabelCountTable
+              title="Tipificaciones"
+              subtitle="Distribución de tipificaciones en ventas"
+              data={typificationData}
+            />
+            <LabelCountTable
+              title="Etiquetas"
+              subtitle="Etiquetas más frecuentes en conversaciones de venta"
+              data={tagsData}
+            />
+            <LabelCountTable
+              title="Tipo de paquete"
+              subtitle="Participación por tipo de paquete vendido"
+              data={packageTypesSalesData}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

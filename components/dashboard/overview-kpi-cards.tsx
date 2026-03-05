@@ -52,12 +52,12 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <CheckCircle className="size-3.5" />
-            Sesiones cerradas
+            Conversaciones cerradas
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
-            {kpis.closedSessions}
+            {kpis.closedConversations}
           </p>
         </CardContent>
       </Card>

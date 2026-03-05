@@ -53,35 +53,50 @@ export function ChannelsPieChart({ data }: ChannelsPieChartProps) {
         <CardTitle className="text-sm font-medium">Canales</CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto h-[250px] w-full max-w-[280px]"
-        >
-          <PieChart>
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <Pie
-              data={chartData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={80}
-              paddingAngle={2}
-              strokeWidth={1}
-              stroke="var(--border)"
-            >
-              {chartData.map((entry, index) => (
-                <Cell
-                  key={entry.name}
-                  fill={CHART_COLORS[index % CHART_COLORS.length]}
-                  stroke="var(--border)"
-                  strokeWidth={1}
+        <div className="flex items-center gap-4">
+          <ChartContainer
+            config={chartConfig}
+            className="h-[200px] w-[200px] shrink-0"
+          >
+            <PieChart>
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+              <Pie
+                data={chartData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={80}
+                paddingAngle={2}
+                strokeWidth={1}
+                stroke="var(--border)"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={entry.name}
+                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+                    stroke="var(--border)"
+                    strokeWidth={1}
+                  />
+                ))}
+              </Pie>
+            </PieChart>
+          </ChartContainer>
+
+          <ul className="flex flex-col gap-1.5 text-xs">
+            {data.map((d, i) => (
+              <li key={d.channel} className="flex items-center gap-2">
+                <span
+                  className="inline-block size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
                 />
-              ))}
-            </Pie>
-          </PieChart>
-        </ChartContainer>
+                <span className="truncate">{d.channel}</span>
+                <span className="ml-auto tabular-nums font-medium">{d.count}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </CardContent>
     </Card>
   );

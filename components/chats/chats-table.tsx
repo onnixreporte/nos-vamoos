@@ -16,6 +16,8 @@ import {
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
+import { normalizeChannelId } from "@/lib/dashboard-aggregation";
+import { normalizeTypification } from "@/lib/dashboard-filters";
 
 function formatDate(iso: string | undefined): string {
   if (!iso) return "—";
@@ -73,7 +75,7 @@ function itemMatchesSearch(
     {
       agentName: string;
       typification: string;
-      sessionCount: number;
+      conversationCount: number;
       botMessageCount: number;
       agentMessageCount: number;
       avgAgentResponseMs: number;
@@ -87,6 +89,7 @@ function itemMatchesSearch(
     item.chat.chatId ?? "",
     item.chat.contactId ?? "",
     item.chat.channelId ?? "",
+    normalizeChannelId(item.chat.channelId ?? ""),
     item.creationTime ?? "",
     item.lastUserMessageDatetime ?? "",
     item.country ?? "",
@@ -99,7 +102,7 @@ function itemMatchesSearch(
     ...(item.variables ? Object.values(item.variables) : []),
     metrics?.agentName ?? "",
     metrics?.typification ?? "",
-    String(metrics?.sessionCount ?? ""),
+    String(metrics?.conversationCount ?? ""),
     String(metrics?.botMessageCount ?? ""),
     String(metrics?.agentMessageCount ?? ""),
     String(metrics?.avgAgentResponseMs ?? ""),
@@ -136,7 +139,7 @@ interface ChatsTableProps {
     {
       agentName: string;
       typification: string;
-      sessionCount: number;
+      conversationCount: number;
       botMessageCount: number;
       agentMessageCount: number;
       avgAgentResponseMs: number;
@@ -207,7 +210,7 @@ export function ChatsTable({
                 <TableHead className="sticky top-0 z-10 min-w-[140px] bg-background">Último mensaje</TableHead>
                 <TableHead className="sticky top-0 z-10 min-w-[130px] bg-background">Nombre de agente</TableHead>
                 <TableHead className="sticky top-0 z-10 min-w-[120px] bg-background">Tipificación</TableHead>
-                <TableHead className="sticky top-0 z-10 min-w-[100px] bg-background">Sesiones</TableHead>
+                <TableHead className="sticky top-0 z-10 min-w-[100px] bg-background">Conversaciones</TableHead>
                 <TableHead className="sticky top-0 z-10 min-w-[110px] bg-background">Mensajes bot</TableHead>
                 <TableHead className="sticky top-0 z-10 min-w-[130px] bg-background">Mensajes agente</TableHead>
                 <TableHead className="sticky top-0 z-10 min-w-[150px] bg-background">Tiempo resp. agente</TableHead>
@@ -248,7 +251,7 @@ export function ChatsTable({
                       className="max-w-[140px] truncate font-mono text-xs"
                       title={item.chat.channelId}
                     >
-                      {item.chat.channelId}
+                      {normalizeChannelId(item.chat.channelId)}
                     </TableCell>
                     <TableCell className="text-xs whitespace-nowrap">
                       {formatDate(item.creationTime)}
@@ -260,10 +263,14 @@ export function ChatsTable({
                       {chatMetricsByChatId?.[item.chat.chatId]?.agentName ?? "—"}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {chatMetricsByChatId?.[item.chat.chatId]?.typification ?? "—"}
+                      {chatMetricsByChatId?.[item.chat.chatId]?.typification
+                        ? normalizeTypification(
+                            chatMetricsByChatId[item.chat.chatId].typification,
+                          )
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-xs text-center tabular-nums">
-                      {chatMetricsByChatId?.[item.chat.chatId]?.sessionCount ?? "—"}
+                      {chatMetricsByChatId?.[item.chat.chatId]?.conversationCount ?? "—"}
                     </TableCell>
                     <TableCell className="text-xs text-center tabular-nums">
                       {chatMetricsByChatId?.[item.chat.chatId]?.botMessageCount ?? "—"}

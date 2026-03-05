@@ -18,6 +18,17 @@ export const DEFAULT_ADDITIONAL_FILTERS: AdditionalFilters = {
   tag: "all",
 };
 
+/** Typification used for testing; excluded from charts and filter options. */
+export const TEST_TYPIFICATION_NORMALIZED = "Testing Conversación de Prueba";
+
+export function normalizeTypification(raw: string): string {
+  return raw.replaceAll("_", " ");
+}
+
+export function isTestTypification(normalized: string): boolean {
+  return normalized === TEST_TYPIFICATION_NORMALIZED;
+}
+
 export function buildAdditionalFilterOptions(
   chats: ChatWithMessagesResponse[],
   agentItems: AgentMetricsItem[] = [],
@@ -28,9 +39,12 @@ export function buildAdditionalFilterOptions(
 
   for (const item of agentItems) {
     const agentName = item.agentName?.trim();
-    const typification = item.typification?.trim();
+    const typificationRaw = item.typification?.trim();
+    const typification = typificationRaw
+      ? normalizeTypification(typificationRaw)
+      : "";
     if (agentName) agentSet.add(agentName);
-    if (typification) typificationSet.add(typification);
+    if (typification && !isTestTypification(typification)) typificationSet.add(typification);
   }
 
   for (const chat of chats) {
@@ -66,7 +80,10 @@ export function buildChatMetadataMaps(
     if (!item.chatId) continue;
 
     const agentName = item.agentName?.trim();
-    const typification = item.typification?.trim();
+    const typificationRaw = item.typification?.trim();
+    const typification = typificationRaw
+      ? normalizeTypification(typificationRaw)
+      : "";
     const conversationLink =
       typeof item.conversationLink === "string"
         ? item.conversationLink.trim()
@@ -116,7 +133,9 @@ export function chatMatchesAdditionalFilters(
   }
 
   if (hasTypificationFilter) {
-    const typification = metadata?.typificationByChatId?.get(chat.chat.chatId) ?? "";
+    const typificationRaw =
+      metadata?.typificationByChatId?.get(chat.chat.chatId) ?? "";
+    const typification = normalizeTypification(typificationRaw);
     if (typification !== filters.typification) {
       return false;
     }

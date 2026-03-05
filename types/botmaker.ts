@@ -71,15 +71,40 @@ export interface AgentMetricsPage {
 }
 
 /**
+ * Agent list item from GET /agents (List agents).
+ * @see api-botmaker.json AgentResponse, AgentsPage
+ */
+export interface AgentListItem {
+  id: string;
+  email?: string;
+  name?: string;
+  alias?: string;
+  isOnline?: boolean;
+  status?: string;
+  role?: string;
+  queues?: string[];
+  slots?: number;
+  priority?: string;
+  groups?: string[];
+  additionalInfo?: Record<string, unknown>;
+  creationTime?: string;
+}
+
+export interface AgentsListPage {
+  nextPage?: string | null;
+  items?: AgentListItem[];
+}
+
+/**
  * Aggregated metrics per agent (from AgentMetricsItem[] grouped by agentId).
  */
 export interface AgentSummary {
   agentId: string;
   agentName: string;
   queue: string;
-  totalSessions: number;
-  closedSessions: number;
-  openSessions: number;
+  totalConversations: number;
+  closedConversations: number;
+  openConversations: number;
   onHold: number;
   avgFirstResponseMs: number;
   avgAttendingTimeMs: number;
@@ -90,6 +115,10 @@ export interface AgentSummary {
   timeouts: number;
   typifications: Record<string, number>;
   topTypification: string;
+  /** From GET /agents (list agents). */
+  isOnline?: boolean;
+  /** From GET /agents (list agents). */
+  status?: string;
 }
 
 export interface MessageResponse {

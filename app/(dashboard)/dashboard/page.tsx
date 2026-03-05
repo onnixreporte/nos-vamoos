@@ -29,6 +29,7 @@ import {
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
 } from "@/lib/dashboard-filters";
+import { isTestChat } from "@/lib/test-contacts";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -128,7 +129,8 @@ export default function DashboardPage() {
           fetchAllAgentMetrics("closed"),
         ]);
         if (cancelled) return;
-        setChats(chatList);
+        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        setChats(nonTestChats);
         setAgentItems([...closedItems, ...openItems]);
       } catch (err) {
         if (!cancelled) {
@@ -274,11 +276,17 @@ export default function DashboardPage() {
             <AgentSessionsBarChart agents={agents} limit={8} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <ContactScheduleHeatmap data={contactScheduleData} />
+            <ContactScheduleHeatmap
+              data={contactScheduleData}
+              filterFrom={appliedFilter?.from}
+              filterTo={appliedFilter?.to}
+            />
             <MonthlyCalendarHeatmap
               data={monthlyCalendarData}
               year={calendarYearMonth.year}
               month={calendarYearMonth.month}
+              filterFrom={appliedFilter?.from}
+              filterTo={appliedFilter?.to}
             />
           </div>
           <CountryMapChart data={countryCounts} />

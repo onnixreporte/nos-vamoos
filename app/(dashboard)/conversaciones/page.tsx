@@ -10,7 +10,9 @@ import {
   buildAdditionalFilterOptions,
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
+  normalizeTypification,
 } from "@/lib/dashboard-filters";
+import { isTestChat } from "@/lib/test-contacts";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -22,7 +24,7 @@ import type {
 interface ConversationMetrics {
   agentName: string;
   typification: string;
-  sessionCount: number;
+  conversationCount: number;
   agentMessageCount: number;
   botMessageCount: number;
   avgAgentResponseMs: number;
@@ -95,8 +97,9 @@ export default function ConversacionesPage() {
     fetchChats(undefined, appliedFilter)
       .then((page) => {
         if (!cancelled) {
+          const nonTestItems = (page.items ?? []).filter((chat) => !isTestChat(chat));
           setData({
-            items: page.items ?? [],
+            items: nonTestItems,
             nextPage: page.nextPage ?? null,
           });
           setBotMessagesByChatId({});
@@ -128,7 +131,7 @@ export default function ConversacionesPage() {
       {
         agentName: string;
         typification: string;
-        sessionCount: number;
+        conversationCount: number;
         agentMessageCount: number;
         responseSumMs: number;
         responseCount: number;
@@ -156,25 +159,22 @@ export default function ConversacionesPage() {
             const prev = acc[item.chatId] ?? {
               agentName: "",
               typification: "",
-              sessionCount: 0,
+              conversationCount: 1,
               agentMessageCount: 0,
               responseSumMs: 0,
               responseCount: 0,
               conversationLink: "",
             };
-            const sessionsDelta =
-              parseNum(item.openSessions) +
-              parseNum(item.closedSessions) +
-              parseNum(item.onHold);
             const responseMs =
               parseNum(item.fromOpAssignedToOpFirstResponse) ||
               parseNum(item.avgResponseTime);
 
             acc[item.chatId] = {
               agentName: item.agentName?.trim() || prev.agentName,
-              typification: item.typification?.trim() || prev.typification,
-              sessionCount:
-                prev.sessionCount + (sessionsDelta > 0 ? sessionsDelta : 1),
+              typification: item.typification?.trim()
+                ? normalizeTypification(item.typification.trim())
+                : prev.typification,
+              conversationCount: 1,
               agentMessageCount:
                 prev.agentMessageCount + parseNum(item.operatorResponses),
               responseSumMs: prev.responseSumMs + (responseMs > 0 ? responseMs : 0),
@@ -206,7 +206,7 @@ export default function ConversacionesPage() {
             normalized[chatId] = {
               agentName: metrics.agentName,
               typification: metrics.typification,
-              sessionCount: metrics.sessionCount,
+              conversationCount: metrics.conversationCount,
               agentMessageCount: metrics.agentMessageCount,
               botMessageCount: 0,
               avgAgentResponseMs:
@@ -294,7 +294,7 @@ export default function ConversacionesPage() {
       const prev = combined[chatId] ?? {
         agentName: "",
         typification: "",
-        sessionCount: 0,
+        conversationCount: 1,
         agentMessageCount: 0,
         botMessageCount: 0,
         avgAgentResponseMs: 0,
@@ -348,10 +348,11 @@ export default function ConversacionesPage() {
       setLoadingMore(true);
       try {
         const page = await fetchChats(nextPageUrl);
+        const nonTestItems = (page.items ?? []).filter((chat) => !isTestChat(chat));
         setData((prev) => ({
           items: prev
-            ? [...prev.items, ...(page.items ?? [])]
-            : page.items ?? [],
+            ? [...prev.items, ...nonTestItems]
+            : nonTestItems,
           nextPage: page.nextPage ?? null,
         }));
       } catch (err) {

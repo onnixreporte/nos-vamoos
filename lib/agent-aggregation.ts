@@ -1,4 +1,8 @@
 import type { AgentMetricsItem, AgentSummary } from "@/types/botmaker";
+import {
+  normalizeTypification,
+  isTestTypification,
+} from "@/lib/dashboard-filters";
 
 function parseNum(s: string | undefined): number {
   if (s == null || s === "") return 0;
@@ -31,8 +35,8 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
     {
       agentName: string;
       queue: string;
-      closedSessions: number;
-      openSessions: number;
+      closedConversationIds: Set<string>;
+      openConversationIds: Set<string>;
       onHold: number;
       firstResponseSumMs: number;
       firstResponseCount: number;
@@ -56,8 +60,8 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
       acc = {
         agentName: item.agentName ?? "",
         queue: item.queue ?? "",
-        closedSessions: 0,
-        openSessions: 0,
+        closedConversationIds: new Set<string>(),
+        openConversationIds: new Set<string>(),
         onHold: 0,
         firstResponseSumMs: 0,
         firstResponseCount: 0,
@@ -75,8 +79,14 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
 
     acc.agentName = item.agentName ?? acc.agentName;
     acc.queue = item.queue ?? acc.queue;
-    acc.closedSessions += parseNum(item.closedSessions);
-    acc.openSessions += parseNum(item.openSessions);
+    if (item.chatId) {
+      if (parseNum(item.closedSessions) > 0) {
+        acc.closedConversationIds.add(item.chatId);
+      }
+      if (parseNum(item.openSessions) > 0) {
+        acc.openConversationIds.add(item.chatId);
+      }
+    }
     acc.onHold += parseNum(item.onHold);
     const firstRespMs = parseNum(item.fromOpAssignedToOpFirstResponse);
     if (firstRespMs > 0) {
@@ -97,22 +107,28 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
       parseNum(item.userTimeout) +
       parseNum(item.sessionTimeout);
 
-    const typ = item.typification?.trim() || "—";
-    acc.typifications[typ] = (acc.typifications[typ] ?? 0) + 1;
+    const typ = item.typification?.trim()
+      ? normalizeTypification(item.typification.trim())
+      : "—";
+    if (!isTestTypification(typ)) {
+      acc.typifications[typ] = (acc.typifications[typ] ?? 0) + 1;
+    }
   }
 
   const result: AgentSummary[] = [];
   for (const [agentId, acc] of byAgent.entries()) {
     const topTypification =
-      Object.entries(acc.typifications).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      "—";
+      Object.entries(acc.typifications)
+        .filter(([t]) => !isTestTypification(t))
+        .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
     result.push({
       agentId,
       agentName: acc.agentName,
       queue: acc.queue,
-      totalSessions: acc.closedSessions + acc.openSessions + acc.onHold,
-      closedSessions: acc.closedSessions,
-      openSessions: acc.openSessions,
+      totalConversations:
+        acc.closedConversationIds.size + acc.openConversationIds.size + acc.onHold,
+      closedConversations: acc.closedConversationIds.size,
+      openConversations: acc.openConversationIds.size,
       onHold: acc.onHold,
       avgFirstResponseMs:
         acc.firstResponseCount > 0
@@ -132,5 +148,5 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
     });
   }
 
-  return result.sort((a, b) => b.closedSessions - a.closedSessions);
+  return result.sort((a, b) => b.closedConversations - a.closedConversations);
 }
