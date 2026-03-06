@@ -257,7 +257,7 @@ export default function VentasPage() {
             />
             <LabelCountTable
               title="Tipo de paquete"
-              subtitle="Participación por tipo de paquete vendido"
+              subtitle="Participación por tipo de paquete"
               data={packageTypesSalesData}
             />
           </div>
