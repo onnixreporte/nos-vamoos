@@ -10,6 +10,7 @@ import {
   buildAdditionalFilterOptions,
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
+  isTestTypification,
   normalizeTypification,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
@@ -338,10 +339,12 @@ export default function ConversacionesPage() {
 
   const filteredItems = useMemo(() => {
     const items = data?.items ?? [];
-    return items.filter((chat) =>
-      chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
-    );
-  }, [data?.items, additionalFilters, metadataMaps]);
+    return items.filter((chat) => {
+      const typ = combinedMetricsByChatId[chat.chat.chatId]?.typification;
+      if (typ && isTestTypification(typ)) return false;
+      return chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps);
+    });
+  }, [data?.items, additionalFilters, metadataMaps, combinedMetricsByChatId]);
 
   const handleLoadMore = useCallback(
     async (nextPageUrl: string) => {

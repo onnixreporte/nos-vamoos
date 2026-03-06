@@ -23,6 +23,7 @@ import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
 import {
   buildAdditionalFilterOptions,
   buildChatMetadataMaps,
+  buildTestTypificationChatIds,
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
 } from "@/lib/dashboard-filters";
@@ -124,9 +125,16 @@ export default function VentasPage() {
           fetchAllAgentMetrics("closed"),
         ]);
         if (cancelled) return;
-        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        const allAgentItems = [...closedItems, ...openItems];
+        const testChatIds = buildTestTypificationChatIds(allAgentItems);
+        const nonTestChats = chatList.filter(
+          (chat) => !isTestChat(chat) && !testChatIds.has(chat.chat.chatId),
+        );
+        const cleanItems = allAgentItems.filter(
+          (item) => !item.chatId || !testChatIds.has(item.chatId),
+        );
         setChats(nonTestChats);
-        setAgentItems([...closedItems, ...openItems]);
+        setAgentItems(cleanItems);
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -239,12 +247,12 @@ export default function VentasPage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <LabelCountTable
               title="Tipificaciones"
-              subtitle="Distribución de tipificaciones en ventas"
+              subtitle="Distribución de tipificaciones de cierre"
               data={typificationData}
             />
             <LabelCountTable
               title="Etiquetas"
-              subtitle="Etiquetas más frecuentes en conversaciones de venta"
+              subtitle="Etiquetas más frecuentes en conversaciones"
               data={tagsData}
             />
             <LabelCountTable

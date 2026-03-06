@@ -10,7 +10,9 @@ import { aggregateByAgent } from "@/lib/agent-aggregation";
 import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
 import {
   buildAdditionalFilterOptions,
+  buildTestTypificationChatIds,
   DEFAULT_ADDITIONAL_FILTERS,
+  EXCLUDED_AGENT_NAMES,
   normalizeTypification,
 } from "@/lib/dashboard-filters";
 import type {
@@ -168,7 +170,9 @@ export default function AgentesPage() {
   );
 
   const filteredRawItems = useMemo(() => {
+    const testChatIds = buildTestTypificationChatIds(rawItems);
     return rawItems.filter((item) => {
+      if (item.chatId && testChatIds.has(item.chatId)) return false;
       if (
         additionalFilters.agent !== "all" &&
         (item.agentName?.trim() ?? "") !== additionalFilters.agent
@@ -192,11 +196,13 @@ export default function AgentesPage() {
   }, [filteredRawItems]);
 
   const agents = useMemo(() => {
-    return agentsList.map((agent) => {
-      const fromMetrics = metricsByAgentId.get(agent.id);
-      const base = fromMetrics ?? emptySummaryFromAgent(agent);
-      return { ...base, isOnline: agent.isOnline, status: agent.status };
-    });
+    return agentsList
+      .filter((agent) => !EXCLUDED_AGENT_NAMES.has((agent.name ?? "").trim()))
+      .map((agent) => {
+        const fromMetrics = metricsByAgentId.get(agent.id);
+        const base = fromMetrics ?? emptySummaryFromAgent(agent);
+        return { ...base, isOnline: agent.isOnline, status: agent.status };
+      });
   }, [agentsList, metricsByAgentId]);
 
   return (

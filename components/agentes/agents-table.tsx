@@ -88,7 +88,7 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                 En línea
               </TableHead>
               <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background">
-                Estado
+                Estado en plataforma
               </TableHead>
               <TableHead className="sticky top-0 z-10 min-w-[90px] bg-background text-right">
                 Conv. cerradas

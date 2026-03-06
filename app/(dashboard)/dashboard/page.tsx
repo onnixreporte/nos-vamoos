@@ -26,6 +26,7 @@ import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
 import {
   buildAdditionalFilterOptions,
   buildChatMetadataMaps,
+  buildTestTypificationChatIds,
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
 } from "@/lib/dashboard-filters";
@@ -129,9 +130,16 @@ export default function DashboardPage() {
           fetchAllAgentMetrics("closed"),
         ]);
         if (cancelled) return;
-        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        const allAgentItems = [...closedItems, ...openItems];
+        const testChatIds = buildTestTypificationChatIds(allAgentItems);
+        const nonTestChats = chatList.filter(
+          (chat) => !isTestChat(chat) && !testChatIds.has(chat.chat.chatId),
+        );
+        const cleanItems = allAgentItems.filter(
+          (item) => !item.chatId || !testChatIds.has(item.chatId),
+        );
         setChats(nonTestChats);
-        setAgentItems([...closedItems, ...openItems]);
+        setAgentItems(cleanItems);
       } catch (err) {
         if (!cancelled) {
           setError(

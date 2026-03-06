@@ -29,6 +29,32 @@ export function isTestTypification(normalized: string): boolean {
   return normalized === TEST_TYPIFICATION_NORMALIZED;
 }
 
+export const EXCLUDED_AGENT_NAMES = new Set([
+  "Angela Milen",
+  "Christian Chaparroa Ojeda Alarcon",
+  "Andrés Pangrazio",
+  "Cesar Josué Farias Vega",
+  "Enzo Rafael Gregor Nunez",
+  "Hector Andres Riveros Miranda",
+]);
+
+/**
+ * Collect chatIds whose typification is the test one so they can be excluded
+ * from all dashboard computations.
+ */
+export function buildTestTypificationChatIds(
+  agentItems: AgentMetricsItem[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const item of agentItems) {
+    const raw = item.typification?.trim();
+    if (raw && isTestTypification(normalizeTypification(raw)) && item.chatId) {
+      ids.add(item.chatId);
+    }
+  }
+  return ids;
+}
+
 export function buildAdditionalFilterOptions(
   chats: ChatWithMessagesResponse[],
   agentItems: AgentMetricsItem[] = [],

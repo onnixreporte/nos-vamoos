@@ -194,8 +194,8 @@ export function countSalesByPackageType(
 ): LabelCount[] {
   const counts = new Map<string, number>();
   for (const chat of chats) {
-    if (!isSale(chat)) continue;
-    const raw = chat.variables?.tipo_paquete?.trim() || "Sin tipo";
+    const raw = chat.variables?.tipo_paquete?.trim();
+    if (!raw) continue;
     counts.set(raw, (counts.get(raw) ?? 0) + 1);
   }
   return Array.from(counts.entries())
