@@ -70,19 +70,24 @@ export default function AgentesPage() {
 
   // Fetch all agents (list with isOnline, status) — no date filter
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
     setError(null);
     setLoadingAgents(true);
+    const MAX_PAGES = 200;
     (async () => {
       try {
         let url: string | null = "/api/agents";
         const acc: AgentListItem[] = [];
-        while (url) {
-          const res = await fetch(url);
+        let pageCount = 0;
+        while (url && pageCount < MAX_PAGES) {
+          pageCount++;
+          const res = await fetch(url, { signal: controller.signal });
           if (!res.ok) throw new Error(`Error ${res.status}`);
           const page = (await res.json()) as AgentsListPage;
           if (cancelled) return;
-          acc.push(...(page.items ?? []));
+          if (!page.items?.length) break;
+          acc.push(...page.items);
           url =
             page.nextPage != null && page.nextPage !== ""
               ? `/api/agents?nextPage=${encodeURIComponent(page.nextPage)}`
@@ -102,6 +107,7 @@ export default function AgentesPage() {
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [refreshTrigger]);
 
@@ -112,9 +118,12 @@ export default function AgentesPage() {
       return;
     }
 
+    const controller = new AbortController();
     let cancelled = false;
     setError(null);
     setLoadingMetrics(true);
+
+    const MAX_PAGES = 200;
 
     const fetchAllPages = async (
       status: string
@@ -126,12 +135,15 @@ export default function AgentesPage() {
       });
       let url: string | null = `/api/agent-metrics?${params.toString()}`;
       const acc: AgentMetricsItem[] = [];
-      while (url) {
-        const res = await fetch(url);
+      let pageCount = 0;
+      while (url && pageCount < MAX_PAGES) {
+        pageCount++;
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const page = (await res.json()) as AgentMetricsPage;
         if (cancelled) return acc;
-        acc.push(...(page.items ?? []));
+        if (!page.items?.length) break;
+        acc.push(...page.items);
         url = page.nextPage
           ? `/api/agent-metrics?nextPage=${encodeURIComponent(page.nextPage)}`
           : null;
@@ -161,6 +173,7 @@ export default function AgentesPage() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [appliedFilter?.from, appliedFilter?.to, refreshTrigger]);
 
