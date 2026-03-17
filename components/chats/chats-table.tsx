@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { normalizeChannelId } from "@/lib/dashboard-aggregation";
 import { normalizeTypification } from "@/lib/dashboard-filters";
 
@@ -131,9 +131,6 @@ function TagsCell({ tags }: { tags?: string[] }) {
 
 interface ChatsTableProps {
   items: ChatWithMessagesResponse[];
-  nextPage: string | null;
-  onLoadMore: (nextPageUrl: string) => Promise<void>;
-  isLoadingMore?: boolean;
   chatMetricsByChatId?: Record<
     string,
     {
@@ -150,9 +147,6 @@ interface ChatsTableProps {
 
 export function ChatsTable({
   items,
-  nextPage,
-  onLoadMore,
-  isLoadingMore = false,
   chatMetricsByChatId = null,
 }: ChatsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -345,24 +339,7 @@ export function ChatsTable({
           </div>
         )}
 
-        {nextPage && (
-          <div className="flex justify-center">
-            <Button
-              variant="outline"
-              onClick={() => onLoadMore(nextPage)}
-              disabled={isLoadingMore}
-            >
-              {isLoadingMore ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Cargando…
-                </>
-              ) : (
-                "Cargar más"
-              )}
-            </Button>
-          </div>
-        )}
+
       </div>
   );
 }

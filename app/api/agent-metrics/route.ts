@@ -1,3 +1,4 @@
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { NextRequest, NextResponse } from "next/server";
 
 const BOTMAKER_AGENT_METRICS_URL =
@@ -24,10 +25,12 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const nextPageEncoded = searchParams.get("nextPage");
+  // searchParams.get() already decodes the value — do NOT decodeURIComponent
+  // again, as that double-decodes %3A→: and breaks Botmaker's nextPage token.
+  const nextPageRaw = searchParams.get("nextPage");
 
-  const url = nextPageEncoded
-    ? decodeURIComponent(nextPageEncoded)
+  const url = nextPageRaw
+    ? nextPageRaw
     : (() => {
         const url = new URL(BOTMAKER_AGENT_METRICS_URL);
         for (const key of ALLOWED_PARAMS) {
@@ -35,7 +38,11 @@ export async function GET(request: NextRequest) {
           let value = searchParams.get(key);
           if (value == null || value === "") continue;
           if (key === "from" || key === "to") {
-            value = value.replace(/Z$/, ".000Z").replace(/\.000\.000Z$/, ".000Z");
+            if (/\.\d{3}Z$/.test(value)) {
+              value = value.replace(/\.000\.000Z$/, ".000Z");
+            } else if (value.endsWith("Z")) {
+              value = value.replace(/Z$/, ".000Z");
+            }
           }
           url.searchParams.set(key, value);
         }
@@ -47,12 +54,13 @@ export async function GET(request: NextRequest) {
 
   try {
     console.log("[agent-metrics] Fetching:", url);
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
         "access-token": token,
       },
+      timeoutMs: 120_000,
     });
 
     if (!res.ok) {

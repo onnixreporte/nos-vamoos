@@ -129,6 +129,7 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
+        suppressHydrationWarning
         style={
           {
             "--sidebar-width": SIDEBAR_WIDTH,
@@ -212,10 +213,12 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      suppressHydrationWarning
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
         data-slot="sidebar-gap"
+        suppressHydrationWarning
         className={cn(
           "transition-[width] duration-200 ease-linear relative w-(--sidebar-width) bg-transparent",
           "group-data-[collapsible=offcanvas]:w-0",
@@ -228,6 +231,7 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         data-side={side}
+        suppressHydrationWarning
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           // Adjust the padding for floating and inset variants.
@@ -241,6 +245,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
+          suppressHydrationWarning
           className="bg-sidebar group-data-[variant=floating]:ring-sidebar-border group-data-[variant=floating]:rounded-none group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 flex size-full flex-col"
         >
           {children}
@@ -333,6 +338,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-header"
       data-sidebar="header"
+      suppressHydrationWarning
       className={cn("gap-2 p-2 flex flex-col", className)}
       {...props}
     />
@@ -344,6 +350,7 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-footer"
       data-sidebar="footer"
+      suppressHydrationWarning
       className={cn("gap-2 p-2 flex flex-col", className)}
       {...props}
     />
@@ -369,6 +376,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-content"
       data-sidebar="content"
+      suppressHydrationWarning
       className={cn(
         "no-scrollbar gap-0 flex min-h-0 flex-1 flex-col overflow-auto group-data-[collapsible=icon]:overflow-hidden",
         className
@@ -383,6 +391,7 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-group"
       data-sidebar="group"
+      suppressHydrationWarning
       className={cn(
         "p-2 relative flex w-full min-w-0 flex-col",
         className
@@ -403,6 +412,7 @@ function SidebarGroupLabel({
     <Comp
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
+      suppressHydrationWarning
       className={cn(
         "text-sidebar-foreground/70 ring-sidebar-ring h-8 rounded-none px-2 text-xs transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-4 flex shrink-0 items-center outline-hidden [&>svg]:shrink-0",
         className

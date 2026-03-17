@@ -1,3 +1,4 @@
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { NextRequest, NextResponse } from "next/server";
 
 const BOTMAKER_AGENTS_URL = "https://api.botmaker.com/v2.0/agents";
@@ -19,12 +20,13 @@ export async function GET(request: NextRequest) {
     : BOTMAKER_AGENTS_URL;
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
         "access-token": token,
       },
+      timeoutMs: 120_000,
     });
 
     if (!res.ok) {

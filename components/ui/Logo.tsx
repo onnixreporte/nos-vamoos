@@ -6,7 +6,7 @@ interface LogoProps {
 
 export function Logo({ className }: LogoProps) {
   return (
-    <div className={cn("relative flex items-center justify-center py-4", className)}>
+    <div className={cn("relative flex items-center justify-center py-4", className)} suppressHydrationWarning>
       {/* Logo completo — visible cuando expandido, oculto cuando colapsado */}
       <svg
         className={cn(

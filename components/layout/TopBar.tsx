@@ -8,7 +8,7 @@ export function TopBar() {
   const { triggerRefresh } = useRefreshContext();
 
   return (
-    <div className="flex flex-1 items-center justify-between">
+    <div className="flex flex-1 items-center justify-between" suppressHydrationWarning>
       <h1 className="text-sm font-semibold text-foreground">Dashboard</h1>
       <div className="flex items-center gap-2">
         <Button

@@ -35,6 +35,29 @@ import type {
   ChatsPage,
 } from "@/types/botmaker";
 
+async function fetchMissingChats(
+  missingChatIds: string[],
+  signal: AbortSignal,
+): Promise<ChatWithMessagesResponse[]> {
+  const CONCURRENCY = 5;
+  const results: ChatWithMessagesResponse[] = [];
+  for (let i = 0; i < missingChatIds.length; i += CONCURRENCY) {
+    if (signal.aborted) break;
+    const batch = missingChatIds.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(async (chatId) => {
+        const res = await fetch(`/api/chats/${chatId}`, { signal });
+        if (!res.ok) return null;
+        return res.json() as Promise<ChatWithMessagesResponse>;
+      }),
+    );
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value) results.push(r.value);
+    }
+  }
+  return results;
+}
+
 function isSameDay(from: string, to: string): boolean {
   return new Date(from).toDateString() === new Date(to).toDateString();
 }
@@ -46,6 +69,9 @@ export default function VentasPage() {
   const [error, setError] = useState<string | null>(null);
   const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
     buildPresetRange("week"),
+  );
+  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
+    () => buildPresetRange("week"),
   );
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
@@ -59,7 +85,12 @@ export default function VentasPage() {
   }, [registerRefresh, unregisterRefresh]);
 
   useEffect(() => {
-    if (!appliedFilter?.from || !appliedFilter?.to) {
+    const t = setTimeout(() => setDebouncedFilter(appliedFilter), 400);
+    return () => clearTimeout(t);
+  }, [appliedFilter]);
+
+  useEffect(() => {
+    if (!debouncedFilter?.from || !debouncedFilter?.to) {
       setChats([]);
       setAgentItems([]);
       setLoading(false);
@@ -76,9 +107,9 @@ export default function VentasPage() {
 
     const fetchAllChats = async (): Promise<ChatWithMessagesResponse[]> => {
       const searchParams = new URLSearchParams();
-      searchParams.set("from", appliedFilter.from);
-      searchParams.set("to", appliedFilter.to);
-      if (appliedFilter.longTerm) searchParams.set("long-term-search", "true");
+      searchParams.set("from", debouncedFilter.from);
+      searchParams.set("to", debouncedFilter.to);
+      if (debouncedFilter.longTerm) searchParams.set("long-term-search", "true");
       let url: string | null = `/api/chats?${searchParams.toString()}`;
       const acc: ChatWithMessagesResponse[] = [];
       let pageCount = 0;
@@ -91,12 +122,15 @@ export default function VentasPage() {
         }
         const page = (await res.json()) as ChatsPage;
         if (cancelled) return acc;
-        if (!page.items?.length) break;
-        acc.push(...page.items);
+        if (page.items?.length) {
+          acc.push(...page.items);
+          console.log(`[ventas] page ${pageCount}: +${page.items.length} chats (total: ${acc.length})`);
+        }
         url = page.nextPage
           ? `/api/chats?nextPage=${encodeURIComponent(page.nextPage)}`
           : null;
       }
+      console.log(`[ventas] fetch complete: ${acc.length} chats in ${pageCount} pages`);
       return acc;
     };
 
@@ -104,8 +138,8 @@ export default function VentasPage() {
       status: string,
     ): Promise<AgentMetricsItem[]> => {
       const params = new URLSearchParams({
-        from: appliedFilter.from,
-        to: appliedFilter.to,
+        from: debouncedFilter.from,
+        to: debouncedFilter.to,
         "session-status": status,
       });
       let url: string | null = `/api/agent-metrics?${params.toString()}`;
@@ -117,8 +151,7 @@ export default function VentasPage() {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const page = (await res.json()) as AgentMetricsPage;
         if (cancelled) return acc;
-        if (!page.items?.length) break;
-        acc.push(...page.items);
+        if (page.items?.length) acc.push(...page.items);
         url = page.nextPage
           ? `/api/agent-metrics?nextPage=${encodeURIComponent(page.nextPage)}`
           : null;
@@ -128,22 +161,29 @@ export default function VentasPage() {
 
     (async () => {
       try {
-        const [chatList, openItems, closedItems] = await Promise.all([
-          fetchAllChats(),
-          fetchAllAgentMetrics("open"),
-          fetchAllAgentMetrics("closed"),
-        ]);
+        const chatList = await fetchAllChats();
+        if (cancelled) return;
+        const openItems = await fetchAllAgentMetrics("open");
+        if (cancelled) return;
+        const closedItems = await fetchAllAgentMetrics("closed");
         if (cancelled) return;
         const allAgentItems = [...closedItems, ...openItems];
-        const testChatIds = buildTestTypificationChatIds(allAgentItems);
-        const nonTestChats = chatList.filter(
-          (chat) => !isTestChat(chat) && !testChatIds.has(chat.chat.chatId),
-        );
-        const cleanItems = allAgentItems.filter(
-          (item) => !item.chatId || !testChatIds.has(item.chatId),
-        );
-        setChats(nonTestChats);
-        setAgentItems(cleanItems);
+
+        // Gap-fill: buscar chatIds en agent-metrics que no estén en chatList
+        const existingIds = new Set(chatList.map((c) => c.chat.chatId));
+        const missingIds = [
+          ...new Set(allAgentItems.map((i) => i.chatId).filter((id): id is string => !!id)),
+        ].filter((id) => !existingIds.has(id));
+
+        let finalChats = chatList;
+        if (missingIds.length > 0) {
+          const extra = await fetchMissingChats(missingIds, controller.signal);
+          if (!cancelled) finalChats = [...chatList, ...extra];
+        }
+        if (cancelled) return;
+
+        setChats(finalChats);
+        setAgentItems(allAgentItems);
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -161,7 +201,7 @@ export default function VentasPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [appliedFilter?.from, appliedFilter?.to, appliedFilter?.longTerm, refreshTrigger]);
+  }, [debouncedFilter?.from, debouncedFilter?.to, debouncedFilter?.longTerm, refreshTrigger]);
 
   const metadataMaps = useMemo(
     () => buildChatMetadataMaps(agentItems),

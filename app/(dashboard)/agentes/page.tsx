@@ -57,6 +57,9 @@ export default function AgentesPage() {
   const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
     buildPresetRange("week"),
   );
+  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
+    () => buildPresetRange("week"),
+  );
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
   );
@@ -86,8 +89,7 @@ export default function AgentesPage() {
           if (!res.ok) throw new Error(`Error ${res.status}`);
           const page = (await res.json()) as AgentsListPage;
           if (cancelled) return;
-          if (!page.items?.length) break;
-          acc.push(...page.items);
+          if (page.items?.length) acc.push(...page.items);
           url =
             page.nextPage != null && page.nextPage !== ""
               ? `/api/agents?nextPage=${encodeURIComponent(page.nextPage)}`
@@ -112,7 +114,12 @@ export default function AgentesPage() {
   }, [refreshTrigger]);
 
   useEffect(() => {
-    if (!appliedFilter?.from || !appliedFilter?.to) {
+    const t = setTimeout(() => setDebouncedFilter(appliedFilter), 400);
+    return () => clearTimeout(t);
+  }, [appliedFilter]);
+
+  useEffect(() => {
+    if (!debouncedFilter?.from || !debouncedFilter?.to) {
       setRawItems([]);
       setLoadingMetrics(false);
       return;
@@ -129,8 +136,8 @@ export default function AgentesPage() {
       status: string
     ): Promise<AgentMetricsItem[]> => {
       const params = new URLSearchParams({
-        from: appliedFilter.from,
-        to: appliedFilter.to,
+        from: debouncedFilter.from,
+        to: debouncedFilter.to,
         "session-status": status,
       });
       let url: string | null = `/api/agent-metrics?${params.toString()}`;
@@ -142,8 +149,7 @@ export default function AgentesPage() {
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const page = (await res.json()) as AgentMetricsPage;
         if (cancelled) return acc;
-        if (!page.items?.length) break;
-        acc.push(...page.items);
+        if (page.items?.length) acc.push(...page.items);
         url = page.nextPage
           ? `/api/agent-metrics?nextPage=${encodeURIComponent(page.nextPage)}`
           : null;
@@ -153,10 +159,9 @@ export default function AgentesPage() {
 
     (async () => {
       try {
-        const [openItems, closedItems] = await Promise.all([
-          fetchAllPages("open"),
-          fetchAllPages("closed"),
-        ]);
+        const openItems = await fetchAllPages("open");
+        if (cancelled) return;
+        const closedItems = await fetchAllPages("closed");
         if (cancelled) return;
         setRawItems([...closedItems, ...openItems]);
       } catch (err) {
@@ -175,7 +180,7 @@ export default function AgentesPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [appliedFilter?.from, appliedFilter?.to, refreshTrigger]);
+  }, [debouncedFilter?.from, debouncedFilter?.to, refreshTrigger]);
 
   const filterOptions = useMemo(
     () => buildAdditionalFilterOptions([], rawItems),
@@ -183,9 +188,10 @@ export default function AgentesPage() {
   );
 
   const filteredRawItems = useMemo(() => {
-    const testChatIds = buildTestTypificationChatIds(rawItems);
+    // TODO: re-enable test filtering once all chats are confirmed to load
+    // const testChatIds = buildTestTypificationChatIds(rawItems);
     return rawItems.filter((item) => {
-      if (item.chatId && testChatIds.has(item.chatId)) return false;
+      // if (item.chatId && testChatIds.has(item.chatId)) return false;
       if (
         additionalFilters.agent !== "all" &&
         (item.agentName?.trim() ?? "") !== additionalFilters.agent
@@ -210,7 +216,8 @@ export default function AgentesPage() {
 
   const agents = useMemo(() => {
     return agentsList
-      .filter((agent) => !EXCLUDED_AGENT_NAMES.has((agent.name ?? "").trim()))
+      // TODO: re-enable agent exclusion once all chats are confirmed to load
+      // .filter((agent) => !EXCLUDED_AGENT_NAMES.has((agent.name ?? "").trim()))
       .map((agent) => {
         const fromMetrics = metricsByAgentId.get(agent.id);
         const base = fromMetrics ?? emptySummaryFromAgent(agent);

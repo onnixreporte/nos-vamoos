@@ -81,8 +81,7 @@ export default function DestinosPage() {
         }
         const page = (await res.json()) as ChatsPage;
         if (cancelled) return acc;
-        if (!page.items?.length) break;
-        acc.push(...page.items);
+        if (page.items?.length) acc.push(...page.items);
         url = page.nextPage
           ? `/api/chats?nextPage=${encodeURIComponent(page.nextPage)}`
           : null;
@@ -94,8 +93,9 @@ export default function DestinosPage() {
       try {
         const chatList = await fetchAllChats();
         if (cancelled) return;
-        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
-        setChats(nonTestChats);
+        // TODO: re-enable test filtering once all chats are confirmed to load
+        // const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        setChats(chatList);
       } catch (err) {
         if (!cancelled) {
           setError(

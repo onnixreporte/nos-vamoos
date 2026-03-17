@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ChatsTable } from "@/components/chats/chats-table";
 import { DateFilterBar } from "@/components/filters/date-filter-bar";
@@ -13,7 +13,6 @@ import {
   isTestTypification,
   normalizeTypification,
 } from "@/lib/dashboard-filters";
-import { isTestChat } from "@/lib/test-contacts";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -21,6 +20,29 @@ import type {
   ChatsPage,
   MessagesPage,
 } from "@/types/botmaker";
+
+async function fetchMissingChats(
+  missingChatIds: string[],
+  signal: AbortSignal,
+): Promise<ChatWithMessagesResponse[]> {
+  const CONCURRENCY = 5;
+  const results: ChatWithMessagesResponse[] = [];
+  for (let i = 0; i < missingChatIds.length; i += CONCURRENCY) {
+    if (signal.aborted) break;
+    const batch = missingChatIds.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(async (chatId) => {
+        const res = await fetch(`/api/chats/${chatId}`, { signal });
+        if (!res.ok) return null;
+        return res.json() as Promise<ChatWithMessagesResponse>;
+      }),
+    );
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value) results.push(r.value);
+    }
+  }
+  return results;
+}
 
 interface ConversationMetrics {
   agentName: string;
@@ -38,17 +60,49 @@ function parseNum(s: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+const MAX_PAGES = 200;
+
+async function fetchAllChats(
+  filter: DateFilter,
+  signal: AbortSignal,
+): Promise<ChatWithMessagesResponse[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("from", filter.from);
+  searchParams.set("to", filter.to);
+  if (filter.longTerm) searchParams.set("long-term-search", "true");
+
+  let url: string | null = `/api/chats?${searchParams.toString()}`;
+  const acc: ChatWithMessagesResponse[] = [];
+  let pageCount = 0;
+
+  while (url && pageCount < MAX_PAGES) {
+    pageCount++;
+    const res = await fetch(url, { signal });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error ?? `Error ${res.status}`);
+    }
+    const page = (await res.json()) as ChatsPage;
+    if (page.items?.length) acc.push(...page.items);
+    url = page.nextPage
+      ? `/api/chats?nextPage=${encodeURIComponent(page.nextPage)}`
+      : null;
+  }
+  return acc;
+}
+
 export default function ConversacionesPage() {
-  const [data, setData] = useState<{
-    items: ChatWithMessagesResponse[];
-    nextPage: string | null;
-  } | null>(null);
+  const [chats, setChats] = useState<ChatWithMessagesResponse[]>([]);
+  const [chatsLoaded, setChatsLoaded] = useState(false);
+  const chatsRef = useRef<ChatWithMessagesResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
     buildPresetRange("week"),
+  );
+  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
+    () => buildPresetRange("week"),
   );
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
@@ -59,6 +113,11 @@ export default function ConversacionesPage() {
   const [botMessagesByChatId, setBotMessagesByChatId] = useState<
     Record<string, number>
   >({});
+  // Ref so the fetch effect can read the latest value without re-running on every update
+  const botMessagesRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    botMessagesRef.current = botMessagesByChatId;
+  }, [botMessagesByChatId]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { registerRefresh, unregisterRefresh } = useRefreshContext();
@@ -67,62 +126,45 @@ export default function ConversacionesPage() {
     return unregisterRefresh;
   }, [registerRefresh, unregisterRefresh]);
 
-  const fetchChats = useCallback(
-    async (url?: string, filter?: DateFilter | null) => {
-      const apiUrl = url
-        ? `/api/chats?nextPage=${encodeURIComponent(url)}`
-        : (() => {
-            const searchParams = new URLSearchParams();
-            if (filter?.from) searchParams.set("from", filter.from);
-            if (filter?.to) searchParams.set("to", filter.to);
-            if (filter?.longTerm)
-              searchParams.set("long-term-search", "true");
-            const qs = searchParams.toString();
-            return qs ? `/api/chats?${qs}` : "/api/chats";
-          })();
-
-      const res = await fetch(apiUrl);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? `Error ${res.status}`);
-      }
-      return res.json() as Promise<ChatsPage>;
-    },
-    []
-  );
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedFilter(appliedFilter), 400);
+    return () => clearTimeout(t);
+  }, [appliedFilter]);
 
   useEffect(() => {
+    if (!debouncedFilter?.from || !debouncedFilter?.to) {
+      setChats([]);
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchChats(undefined, appliedFilter)
-      .then((page) => {
+    setChatsLoaded(false);
+    setBotMessagesByChatId({});
+
+    (async () => {
+      try {
+        const all = await fetchAllChats(debouncedFilter, controller.signal);
         if (!cancelled) {
-          const nonTestItems = (page.items ?? []).filter((chat) => !isTestChat(chat));
-          setData({
-            items: nonTestItems,
-            nextPage: page.nextPage ?? null,
-          });
-          setBotMessagesByChatId({});
+          chatsRef.current = all;
+          setChats(all);
+          setChatsLoaded(true);
         }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Error al cargar chats"
-          );
-        }
-      })
-      .finally(() => {
+      } catch (err) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "Error al cargar chats");
+      } finally {
         if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchChats, appliedFilter, refreshTrigger]);
+      }
+    })();
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [debouncedFilter?.from, debouncedFilter?.to, debouncedFilter?.longTerm, refreshTrigger]);
 
   useEffect(() => {
-    if (!appliedFilter?.from || !appliedFilter?.to) {
+    if (!debouncedFilter?.from || !debouncedFilter?.to) {
       setChatMetricsByChatId(null);
       return;
     }
@@ -148,8 +190,8 @@ export default function ConversacionesPage() {
       acc: MetricsAccumulator,
     ): Promise<MetricsAccumulator> => {
       const params = new URLSearchParams({
-        from: appliedFilter.from,
-        to: appliedFilter.to,
+        from: debouncedFilter.from,
+        to: debouncedFilter.to,
         "session-status": status,
       });
       let url: string | null = `/api/agent-metrics?${params.toString()}`;
@@ -160,37 +202,38 @@ export default function ConversacionesPage() {
         if (!res.ok) break;
         const page = (await res.json()) as AgentMetricsPage;
         if (cancelled) return acc;
-        if (!page.items?.length) break;
-        for (const item of page.items) {
-          if (item.chatId) {
-            const prev = acc[item.chatId] ?? {
-              agentName: "",
-              typification: "",
-              conversationCount: 1,
-              agentMessageCount: 0,
-              responseSumMs: 0,
-              responseCount: 0,
-              conversationLink: "",
-            };
-            const responseMs =
-              parseNum(item.fromOpAssignedToOpFirstResponse) ||
-              parseNum(item.avgResponseTime);
+        if (page.items?.length) {
+          for (const item of page.items) {
+            if (item.chatId) {
+              const prev = acc[item.chatId] ?? {
+                agentName: "",
+                typification: "",
+                conversationCount: 1,
+                agentMessageCount: 0,
+                responseSumMs: 0,
+                responseCount: 0,
+                conversationLink: "",
+              };
+              const responseMs =
+                parseNum(item.fromOpAssignedToOpFirstResponse) ||
+                parseNum(item.avgResponseTime);
 
-            acc[item.chatId] = {
-              agentName: item.agentName?.trim() || prev.agentName,
-              typification: item.typification?.trim()
-                ? normalizeTypification(item.typification.trim())
-                : prev.typification,
-              conversationCount: 1,
-              agentMessageCount:
-                prev.agentMessageCount + parseNum(item.operatorResponses),
-              responseSumMs: prev.responseSumMs + (responseMs > 0 ? responseMs : 0),
-              responseCount: prev.responseCount + (responseMs > 0 ? 1 : 0),
-              conversationLink:
-                (typeof item.conversationLink === "string"
-                  ? item.conversationLink.trim()
-                  : "") || prev.conversationLink,
-            };
+              acc[item.chatId] = {
+                agentName: item.agentName?.trim() || prev.agentName,
+                typification: item.typification?.trim()
+                  ? normalizeTypification(item.typification.trim())
+                  : prev.typification,
+                conversationCount: 1,
+                agentMessageCount:
+                  prev.agentMessageCount + parseNum(item.operatorResponses),
+                responseSumMs: prev.responseSumMs + (responseMs > 0 ? responseMs : 0),
+                responseCount: prev.responseCount + (responseMs > 0 ? 1 : 0),
+                conversationLink:
+                  (typeof item.conversationLink === "string"
+                    ? item.conversationLink.trim()
+                    : "") || prev.conversationLink,
+              };
+            }
           }
         }
         url = page.nextPage
@@ -203,10 +246,9 @@ export default function ConversacionesPage() {
     (async () => {
       try {
         const map: MetricsAccumulator = {};
-        await Promise.all([
-          fetchAllPages("open", map),
-          fetchAllPages("closed", map),
-        ]);
+        await fetchAllPages("open", map);
+        if (cancelled) return;
+        await fetchAllPages("closed", map);
         if (!cancelled) {
           const normalized: Record<string, ConversationMetrics> = {};
           for (const [chatId, metrics] of Object.entries(map)) {
@@ -233,19 +275,48 @@ export default function ConversacionesPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [appliedFilter?.from, appliedFilter?.to, refreshTrigger]);
+  }, [debouncedFilter?.from, debouncedFilter?.to, refreshTrigger]);
+
+  // Gap-fill: fetch individual chats that are in agent-metrics but missing from /chats
+  useEffect(() => {
+    if (!chatsLoaded || !chatMetricsByChatId) return;
+
+    const existingIds = new Set(chatsRef.current.map((c) => c.chat.chatId));
+    const missingIds = Object.keys(chatMetricsByChatId).filter(
+      (id) => !existingIds.has(id),
+    );
+    if (missingIds.length === 0) return;
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const extra = await fetchMissingChats(missingIds, controller.signal);
+        if (!cancelled && extra.length > 0) {
+          const merged = [...chatsRef.current, ...extra];
+          chatsRef.current = merged;
+          setChats(merged);
+        }
+      } catch {
+        // silencioso — los chats del /chats endpoint ya se muestran
+      }
+    })();
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [chatsLoaded, chatMetricsByChatId]);
 
   const fetchBotMessagesCount = useCallback(
     async (chatId: string, signal?: AbortSignal): Promise<number> => {
-      if (!appliedFilter?.from || !appliedFilter?.to) return 0;
+      if (!debouncedFilter?.from || !debouncedFilter?.to) return 0;
 
       const MAX_PAGES = 200;
       const params = new URLSearchParams({
-        from: appliedFilter.from,
-        to: appliedFilter.to,
+        from: debouncedFilter.from,
+        to: debouncedFilter.to,
         "chat-id": chatId,
       });
-      if (appliedFilter.longTerm) {
+      if (debouncedFilter.longTerm) {
         params.set("long-term-search", "true");
       }
 
@@ -260,9 +331,10 @@ export default function ConversacionesPage() {
           return botCount;
         }
         const page = (await res.json()) as MessagesPage;
-        if (!page.items?.length) break;
-        for (const item of page.items) {
-          if (item.from === "bot") botCount += 1;
+        if (page.items?.length) {
+          for (const item of page.items) {
+            if (item.from === "bot") botCount += 1;
+          }
         }
         url = page.nextPage
           ? `/api/messages?nextPage=${encodeURIComponent(page.nextPage)}`
@@ -271,25 +343,33 @@ export default function ConversacionesPage() {
 
       return botCount;
     },
-    [appliedFilter?.from, appliedFilter?.to, appliedFilter?.longTerm],
+    [debouncedFilter?.from, debouncedFilter?.to, debouncedFilter?.longTerm],
   );
 
   useEffect(() => {
-    if (!data?.items?.length) return;
+    if (!chats.length) return;
     const controller = new AbortController();
     let cancelled = false;
-    const chatIds = Array.from(new Set(data.items.map((item) => item.chat.chatId)));
+    const chatIds = Array.from(new Set(chats.map((item) => item.chat.chatId)));
+    // Read via ref so this effect doesn't re-run every time a count is stored
     const missingChatIds = chatIds.filter(
-      (chatId) => botMessagesByChatId[chatId] == null,
+      (chatId) => botMessagesRef.current[chatId] == null,
     );
     if (missingChatIds.length === 0) return;
 
     (async () => {
-      for (const chatId of missingChatIds) {
-        if (cancelled) return;
-        const count = await fetchBotMessagesCount(chatId, controller.signal);
-        if (cancelled) return;
-        setBotMessagesByChatId((prev) => ({ ...prev, [chatId]: count }));
+      try {
+        for (const chatId of missingChatIds) {
+          if (cancelled) return;
+          const count = await fetchBotMessagesCount(chatId, controller.signal);
+          if (cancelled) return;
+          setBotMessagesByChatId((prev) => ({ ...prev, [chatId]: count }));
+        }
+      } catch (err) {
+        // AbortError is expected when the filter changes or component unmounts
+        if (err instanceof Error && err.name !== "AbortError") {
+          console.error("[conversaciones] fetchBotMessages error:", err);
+        }
       }
     })();
 
@@ -297,7 +377,7 @@ export default function ConversacionesPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [data?.items, botMessagesByChatId, fetchBotMessagesCount]);
+  }, [chats, fetchBotMessagesCount]);
 
   const combinedMetricsByChatId = useMemo(() => {
     const combined: Record<string, ConversationMetrics> = {
@@ -336,8 +416,8 @@ export default function ConversacionesPage() {
   );
 
   const filterOptions = useMemo(
-    () => buildAdditionalFilterOptions(data?.items ?? [], pseudoAgentItems),
-    [data?.items, pseudoAgentItems],
+    () => buildAdditionalFilterOptions(chats, pseudoAgentItems),
+    [chats, pseudoAgentItems],
   );
 
   const metadataMaps = useMemo(() => {
@@ -351,36 +431,12 @@ export default function ConversacionesPage() {
   }, [combinedMetricsByChatId]);
 
   const filteredItems = useMemo(() => {
-    const items = data?.items ?? [];
-    return items.filter((chat) => {
+    return chats.filter((chat) => {
       const typ = combinedMetricsByChatId[chat.chat.chatId]?.typification;
       if (typ && isTestTypification(typ)) return false;
       return chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps);
     });
-  }, [data?.items, additionalFilters, metadataMaps, combinedMetricsByChatId]);
-
-  const handleLoadMore = useCallback(
-    async (nextPageUrl: string) => {
-      setLoadingMore(true);
-      try {
-        const page = await fetchChats(nextPageUrl);
-        const nonTestItems = (page.items ?? []).filter((chat) => !isTestChat(chat));
-        setData((prev) => ({
-          items: prev
-            ? [...prev.items, ...nonTestItems]
-            : nonTestItems,
-          nextPage: page.nextPage ?? null,
-        }));
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error al cargar más chats"
-        );
-      } finally {
-        setLoadingMore(false);
-      }
-    },
-    [fetchChats]
-  );
+  }, [chats, additionalFilters, metadataMaps, combinedMetricsByChatId]);
 
   return (
     <div className="min-w-0 space-y-6">
@@ -409,15 +465,12 @@ export default function ConversacionesPage() {
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
-      ) : data ? (
+      ) : (
         <ChatsTable
           items={filteredItems}
-          nextPage={data.nextPage}
-          onLoadMore={handleLoadMore}
-          isLoadingMore={loadingMore}
           chatMetricsByChatId={combinedMetricsByChatId}
         />
-      ) : null}
+      )}
     </div>
   );
 }

@@ -82,9 +82,7 @@ export function DateFilterBar({
     const toDate = dateRange.to ?? dateRange.from;
     const from = toIsoWithTime(fromDate, fromTime, false);
     const to = toIsoWithTime(toDate, toTime, true);
-    const diffMs = toDate.getTime() - fromDate.getTime();
-    const longTerm = diffMs > 24 * 60 * 60 * 1000;
-    onFilterChange({ from, to, longTerm });
+    onFilterChange({ from, to, longTerm: true });
   }, [dateRange, fromTime, toTime, onFilterChange]);
 
   const clearAll = useCallback(() => {
@@ -114,8 +112,8 @@ export function DateFilterBar({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-3" suppressHydrationWarning>
+      <div className="flex flex-wrap items-center gap-2" suppressHydrationWarning>
         {PRESETS.map(({ key, label }) => (
           <Button
             key={key}
@@ -150,7 +148,7 @@ export function DateFilterBar({
       </div>
 
       {additionalFilterOptions && onAdditionalFiltersChange && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" suppressHydrationWarning>
           <Select
             value={selectedAdditionalFilters.agent}
             onValueChange={(value) =>
