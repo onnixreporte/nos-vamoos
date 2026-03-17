@@ -6,6 +6,7 @@ import { ChatsTable } from "@/components/chats/chats-table";
 import { DateFilterBar } from "@/components/filters/date-filter-bar";
 import { useRefreshContext } from "@/store/refresh-context";
 import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
+import { usePersistedFilter } from "@/hooks/use-persisted-filter";
 import {
   buildAdditionalFilterOptions,
   chatMatchesAdditionalFilters,
@@ -98,12 +99,8 @@ export default function ConversacionesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
-    buildPresetRange("week"),
-  );
-  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
-    () => buildPresetRange("week"),
-  );
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:conversaciones", "week");
+  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(appliedFilter);
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
   );

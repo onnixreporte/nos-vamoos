@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { SalesKpiCards } from "@/components/ventas/sales-kpi-cards";
 import { SalesTable } from "@/components/ventas/sales-table";
@@ -20,6 +20,8 @@ import {
   countSalesByPackageType,
 } from "@/lib/sales-aggregation";
 import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
+import { usePersistedFilter } from "@/hooks/use-persisted-filter";
+import { getCachedPageData, setCachedPageData, invalidatePageData } from "@/lib/page-data-cache";
 import {
   buildAdditionalFilterOptions,
   buildChatMetadataMaps,
@@ -67,16 +69,13 @@ export default function VentasPage() {
   const [agentItems, setAgentItems] = useState<AgentMetricsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
-    buildPresetRange("week"),
-  );
-  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
-    () => buildPresetRange("week"),
-  );
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:ventas", "week");
+  const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(appliedFilter);
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const lastRefreshRef = useRef(0);
 
   const { registerRefresh, unregisterRefresh } = useRefreshContext();
   useEffect(() => {
@@ -161,6 +160,25 @@ export default function VentasPage() {
 
     (async () => {
       try {
+        // Check cache first (skip on manual refresh)
+        const isRefresh = lastRefreshRef.current !== refreshTrigger && refreshTrigger > 0;
+        lastRefreshRef.current = refreshTrigger;
+
+        if (!isRefresh) {
+          const cached = getCachedPageData<{ chats: ChatWithMessagesResponse[]; agentItems: AgentMetricsItem[] }>(
+            "ventas",
+            debouncedFilter.from,
+            debouncedFilter.to,
+            debouncedFilter.longTerm,
+          );
+          if (cached) {
+            setChats(cached.chats);
+            setAgentItems(cached.agentItems);
+            setLoading(false);
+            return;
+          }
+        }
+
         const chatList = await fetchAllChats();
         if (cancelled) return;
         const openItems = await fetchAllAgentMetrics("open");
@@ -181,6 +199,11 @@ export default function VentasPage() {
           if (!cancelled) finalChats = [...chatList, ...extra];
         }
         if (cancelled) return;
+
+        setCachedPageData("ventas", debouncedFilter.from, debouncedFilter.to, debouncedFilter.longTerm, {
+          chats: finalChats,
+          agentItems: allAgentItems,
+        });
 
         setChats(finalChats);
         setAgentItems(allAgentItems);
