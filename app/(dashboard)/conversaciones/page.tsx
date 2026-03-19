@@ -212,8 +212,8 @@ export default function ConversacionesPage() {
                 conversationLink: "",
               };
               const responseMs =
-                parseNum(item.fromOpAssignedToOpFirstResponse) ||
-                parseNum(item.avgResponseTime);
+                (parseNum(item.fromOpAssignedToOpFirstResponse) ||
+                  parseNum(item.avgResponseTime)) * 1000;
 
               acc[item.chatId] = {
                 agentName: item.agentName?.trim() || prev.agentName,

@@ -40,7 +40,7 @@ export function computeOverviewKpis(
     if (item.chatId && parseNum(item.closedSessions) > 0) {
       closedConversationIds.add(item.chatId);
     }
-    const ms = parseNum(item.fromOpAssignedToOpFirstResponse);
+    const ms = parseNum(item.fromOpAssignedToOpFirstResponse) * 1000;
     if (ms > 0) {
       firstResponseSumMs += ms;
       firstResponseCount += 1;
@@ -137,6 +137,7 @@ export function normalizeChannelId(channelId: string): string {
   if (platform === "whatsapp") return "WhatsApp";
   if (platform === "messenger") return "Messenger";
   if (platform === "webchat") return "Webchat";
+  if (normalized.includes("facebook-page")) return "Facebook";
 
   return raw;
 }

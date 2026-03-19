@@ -88,12 +88,12 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
       }
     }
     acc.onHold += parseNum(item.onHold);
-    const firstRespMs = parseNum(item.fromOpAssignedToOpFirstResponse);
+    const firstRespMs = parseNum(item.fromOpAssignedToOpFirstResponse) * 1000;
     if (firstRespMs > 0) {
       acc.firstResponseSumMs += firstRespMs;
       acc.firstResponseCount += 1;
     }
-    const attendingMs = parseNum(item.avgAttendingTime);
+    const attendingMs = parseNum(item.avgAttendingTime) * 1000;
     if (attendingMs > 0) {
       acc.attendingSumMs += attendingMs;
       acc.attendingCount += 1;

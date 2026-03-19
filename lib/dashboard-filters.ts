@@ -32,12 +32,13 @@ export function isTestTypification(normalized: string): boolean {
 export const EXCLUDED_AGENT_NAMES = new Set([
   "Angela Milen",
   "Angela Milena Ojeda Alarcon",
-  "Christian Chaparro",
-  "Christian Chaparroa Ojeda Alarcon",
   "Andrés Pangrazio",
   "Cesar Josué Farias Vega",
+  "Christian Chaparro",
+  "Christian Chaparroa Ojeda Alarcon",
   "Enzo Rafael Gregor Nunez",
   "Hector Andres Riveros Miranda",
+  "Patty Villalba",
 ]);
 
 /**

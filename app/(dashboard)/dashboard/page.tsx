@@ -31,6 +31,7 @@ import {
   buildTestTypificationChatIds,
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
+  EXCLUDED_AGENT_NAMES,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
 import type {
@@ -284,7 +285,10 @@ export default function DashboardPage() {
   );
 
   const agents = useMemo(
-    () => aggregateByAgent(filteredAgentItems),
+    () =>
+      aggregateByAgent(filteredAgentItems).filter(
+        (a) => !EXCLUDED_AGENT_NAMES.has(a.agentName.trim()),
+      ),
     [filteredAgentItems],
   );
 

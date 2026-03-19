@@ -86,6 +86,7 @@ export function countByTypification(
     const raw = item.typification?.trim();
     if (!raw) continue;
     const normalized = normalizeTypification(raw);
+    if (isTestTypification(normalized)) continue;
     counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
   }
   return Array.from(counts.entries())

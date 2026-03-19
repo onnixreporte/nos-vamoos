@@ -38,7 +38,7 @@ export function TopConsultedDestinationsChart({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[250px] w-full">
+        <ChartContainer config={chartConfig} style={{ height: Math.max(250, chartData.length * 36) }} className="w-full">
           <BarChart
             data={chartData}
             layout="vertical"

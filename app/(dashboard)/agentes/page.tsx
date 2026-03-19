@@ -216,8 +216,7 @@ export default function AgentesPage() {
 
   const agents = useMemo(() => {
     return agentsList
-      // TODO: re-enable agent exclusion once all chats are confirmed to load
-      // .filter((agent) => !EXCLUDED_AGENT_NAMES.has((agent.name ?? "").trim()))
+      .filter((agent) => !EXCLUDED_AGENT_NAMES.has((agent.name ?? "").trim()))
       .map((agent) => {
         const fromMetrics = metricsByAgentId.get(agent.id);
         const base = fromMetrics ?? emptySummaryFromAgent(agent);

@@ -49,17 +49,19 @@ export function AgentSessionsBarChart({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[250px] w-full">
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <BarChart
             data={chartData}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            margin={{ top: 10, right: 10, left: 0, bottom: 80 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="agent"
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, textAnchor: "end" }}
+              angle={-35}
+              interval={0}
             />
             <YAxis tickLine={false} axisLine={false} />
             <ChartTooltip content={<ChartTooltipContent />} />
