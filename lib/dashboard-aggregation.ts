@@ -65,12 +65,20 @@ export interface TimeBucket {
 
 /**
  * Group conversations by hour (for "today") or by day (for "week"/"month").
+ * When `isToday` is true and granularity is "hour", buckets after the current
+ * hour in Paraguay time are excluded so the chart doesn't show future hours.
  */
 export function groupConversationsByTime(
   chats: ChatWithMessagesResponse[],
-  granularity: "hour" | "day"
+  granularity: "hour" | "day",
+  isToday = false
 ): TimeBucket[] {
   const buckets = new Map<string, number>();
+
+  // When showing today's hourly view, determine the current hour in PY time
+  // so we can cap the x-axis at the present.
+  const nowPY = toPYTime(new Date());
+  const currentHourKey = format(startOfHour(nowPY), "HH:mm", { locale: es });
 
   for (const chat of chats) {
     const raw = chat.lastUserMessageDatetime ?? chat.creationTime;
@@ -85,6 +93,10 @@ export function groupConversationsByTime(
       granularity === "hour"
         ? format(startOfHour(date), "HH:mm", { locale: es })
         : format(startOfDay(date), "yyyy-MM-dd", { locale: es });
+
+    // Skip future hours when viewing today
+    if (isToday && granularity === "hour" && key > currentHourKey) continue;
+
     buckets.set(key, (buckets.get(key) ?? 0) + 1);
   }
 

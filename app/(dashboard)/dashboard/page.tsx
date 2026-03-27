@@ -269,9 +269,14 @@ export default function DashboardPage() {
     return isSameDay(appliedFilter.from, appliedFilter.to) ? "hour" : "day";
   }, [appliedFilter?.from, appliedFilter?.to]);
 
+  const isFilterToday = useMemo(() => {
+    if (!appliedFilter?.from) return false;
+    return isSameDay(appliedFilter.from, new Date().toISOString());
+  }, [appliedFilter?.from]);
+
   const timeBuckets = useMemo(
-    () => groupConversationsByTime(filteredChats, timeGranularity),
-    [filteredChats, timeGranularity],
+    () => groupConversationsByTime(filteredChats, timeGranularity, isFilterToday),
+    [filteredChats, timeGranularity, isFilterToday],
   );
 
   const topDestinations = useMemo(
