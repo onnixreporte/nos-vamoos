@@ -121,8 +121,8 @@ export function countByDestination(
 ): DestinationCount[] {
   const counts = new Map<string, number>();
   for (const chat of chats) {
-    const dest =
-      chat.variables?.destino_viaje?.trim() || "Sin destino";
+    const dest = chat.variables?.destino_viaje?.trim();
+    if (!dest) continue;
     counts.set(dest, (counts.get(dest) ?? 0) + 1);
   }
   return Array.from(counts.entries())

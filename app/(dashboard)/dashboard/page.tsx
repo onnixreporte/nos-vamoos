@@ -195,10 +195,10 @@ export default function DashboardPage() {
           ...new Set(allAgentItems.map((i) => i.chatId).filter((id): id is string => !!id)),
         ].filter((id) => !existingIds.has(id));
 
-        let finalChats = chatList;
+        let finalChats = chatList.filter((c) => !isTestChat(c));
         if (missingIds.length > 0) {
           const extra = await fetchMissingChats(missingIds, controller.signal);
-          if (!cancelled) finalChats = [...chatList, ...extra];
+          if (!cancelled) finalChats = [...finalChats, ...extra.filter((c) => !isTestChat(c))];
         }
         if (cancelled) return;
 

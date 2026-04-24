@@ -93,9 +93,8 @@ export default function DestinosPage() {
       try {
         const chatList = await fetchAllChats();
         if (cancelled) return;
-        // TODO: re-enable test filtering once all chats are confirmed to load
-        // const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
-        setChats(chatList);
+        const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        setChats(nonTestChats);
       } catch (err) {
         if (!cancelled) {
           setError(
