@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CalendarDays, X } from "lucide-react";
@@ -41,6 +41,18 @@ export interface DateFilterBarProps {
   additionalFilterOptions?: AdditionalFilterOptions;
 }
 
+function detectPreset(filter: DateFilter | null): FilterPreset | null {
+  if (!filter?.from || !filter?.to) return null;
+  for (const { key } of PRESETS) {
+    if (key === "custom") continue;
+    const range = buildPresetRange(key as Exclude<FilterPreset, "custom">);
+    if (range.from === filter.from && range.to === filter.to) {
+      return key;
+    }
+  }
+  return "custom";
+}
+
 export function DateFilterBar({
   appliedFilter,
   onFilterChange,
@@ -50,8 +62,13 @@ export function DateFilterBar({
   additionalFilterOptions,
 }: DateFilterBarProps) {
   const [activePreset, setActivePreset] = useState<FilterPreset | null>(
-    defaultPreset
+    () => detectPreset(appliedFilter) ?? defaultPreset,
   );
+
+  useEffect(() => {
+    const detected = detectPreset(appliedFilter);
+    setActivePreset(detected);
+  }, [appliedFilter?.from, appliedFilter?.to]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [fromTime, setFromTime] = useState("00:00");
   const [toTime, setToTime] = useState("23:59");
