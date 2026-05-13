@@ -150,8 +150,7 @@ export function DestinationsTable({ chats }: DestinationsTableProps) {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            Mostrando {startItem + 1}\u2013
-            {Math.min(startItem + PAGE_SIZE, totalItems)} de {totalItems}
+            Mostrando {startItem + 1}–{Math.min(startItem + PAGE_SIZE, totalItems)} de {totalItems}
           </span>
           <div className="flex items-center gap-1">
             <Button
