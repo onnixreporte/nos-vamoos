@@ -12,6 +12,7 @@ import { MessageSquare, Clock, Timer, Pause } from "lucide-react";
 
 interface AgentKpiCardsProps {
   agents: AgentSummary[];
+  avgFirstResponseMsOverride?: number;
 }
 
 function weightedAvg(
@@ -31,14 +32,17 @@ function weightedAvg(
   return sumWeight > 0 ? sumVal / sumWeight : 0;
 }
 
-export function AgentKpiCards({ agents }: AgentKpiCardsProps) {
+export function AgentKpiCards({ agents, avgFirstResponseMsOverride }: AgentKpiCardsProps) {
   const totalClosed = agents.reduce((s, a) => s + a.closedConversations, 0);
   const totalOnHold = agents.reduce((s, a) => s + a.onHold, 0);
-  const avgFirstResponseMs = weightedAvg(
-    agents,
-    (a) => a.avgFirstResponseMs,
-    (a) => a.closedConversations
-  );
+  const avgFirstResponseMs =
+    avgFirstResponseMsOverride !== undefined
+      ? avgFirstResponseMsOverride
+      : weightedAvg(
+          agents,
+          (a) => a.avgFirstResponseMs,
+          (a) => a.closedConversations
+        );
   const avgAttendingMs = weightedAvg(
     agents,
     (a) => a.avgAttendingTimeMs,

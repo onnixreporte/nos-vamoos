@@ -214,6 +214,21 @@ export default function AgentesPage() {
     return new Map(summaries.map((s) => [s.agentId, s]));
   }, [filteredRawItems]);
 
+  const avgFirstResponseMs = useMemo(() => {
+    let sumMs = 0;
+    let count = 0;
+    for (const item of filteredRawItems) {
+      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
+      const n = Number(String(item.fromOpAssignedToOpFirstResponse ?? "").replace(/[^0-9.-]/g, ""));
+      const ms = Number.isFinite(n) ? n * 1000 : 0;
+      if (ms > 0) {
+        sumMs += ms;
+        count += 1;
+      }
+    }
+    return count > 0 ? sumMs / count : 0;
+  }, [filteredRawItems]);
+
   const agents = useMemo(() => {
     return agentsList
       .filter((agent) => !EXCLUDED_AGENT_NAMES.has((agent.name ?? "").trim()))
@@ -259,7 +274,7 @@ export default function AgentesPage() {
         </div>
       ) : (
         <>
-          <AgentKpiCards agents={agents} />
+          <AgentKpiCards agents={agents} avgFirstResponseMsOverride={avgFirstResponseMs} />
           <AgentsTable agents={agents} />
         </>
       )}
