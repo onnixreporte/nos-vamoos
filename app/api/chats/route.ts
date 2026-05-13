@@ -122,11 +122,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const seen = new Set<string>();
+    const deduped = allItems.filter((it) => {
+      const id = (it as { chat?: { chatId?: string } }).chat?.chatId;
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
     console.log(
-      `[chats] Returned ${allItems.length} items across ${windows.length} window(s)`
+      `[chats] Returned ${deduped.length} items (deduped from ${allItems.length}) across ${windows.length} window(s)`
     );
 
-    return NextResponse.json({ items: allItems, nextPage: null });
+    return NextResponse.json({ items: deduped, nextPage: null });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(

@@ -2,18 +2,7 @@ import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { splitDateRange } from "@/lib/date-windows";
 import { NextRequest, NextResponse } from "next/server";
 
-const BOTMAKER_AGENT_METRICS_URL =
-  "https://api.botmaker.com/v2.0/dashboards/agent-metrics";
-
-const ALLOWED_PARAMS = [
-  "from",
-  "to",
-  "session-status",
-  "agent-ids",
-  "channel-ids",
-  "queues",
-  "online-status",
-] as const;
+const BOTMAKER_SESSIONS_URL = "https://api.botmaker.com/v2.0/sessions";
 
 const MAX_PAGES_PER_WINDOW = 200;
 
@@ -60,7 +49,7 @@ export async function GET(request: NextRequest) {
   if (nextPageRaw) {
     const result = await fetchPage(nextPageRaw, token);
     if (!result.ok) {
-      console.error("[agent-metrics] Error", result.status, result.text);
+      console.error("[sessions] Error", result.status, result.text);
       return NextResponse.json(
         { error: `Botmaker API error: ${result.status}`, details: result.text },
         { status: result.status >= 500 ? 502 : result.status }
@@ -69,20 +58,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result.body);
   }
 
-  const baseUrl = new URL(BOTMAKER_AGENT_METRICS_URL);
-  for (const key of ALLOWED_PARAMS) {
-    if (key === "from" || key === "to") continue;
-    const value = searchParams.get(key);
-    if (value == null || value === "") continue;
-    baseUrl.searchParams.set(key, value);
-  }
-  if (!baseUrl.searchParams.has("session-status")) {
-    baseUrl.searchParams.set("session-status", "closed");
-  }
+  const baseUrl = new URL(BOTMAKER_SESSIONS_URL);
+  baseUrl.searchParams.set("include-ai-analysis", "false");
+  baseUrl.searchParams.set("include-events", "false");
+  baseUrl.searchParams.set("include-messages", "false");
+  baseUrl.searchParams.set("include-variables", "false");
+  baseUrl.searchParams.set("include-open-sessions", "true");
+  baseUrl.searchParams.set("timestamp-precision", "seconds");
 
   const fromRaw = searchParams.get("from");
   const toRaw = searchParams.get("to");
   const hasRange = fromRaw && toRaw;
+
+  if (hasRange) {
+    baseUrl.searchParams.set("long-term-search", "true");
+  }
 
   const windows = hasRange
     ? splitDateRange(normalizeDate(fromRaw), normalizeDate(toRaw))
@@ -103,10 +93,10 @@ export async function GET(request: NextRequest) {
 
       while (pageUrl && pageCount < MAX_PAGES_PER_WINDOW) {
         pageCount++;
-        console.log("[agent-metrics] Fetching:", pageUrl);
+        console.log("[sessions] Fetching:", pageUrl);
         const result = await fetchPage(pageUrl, token);
         if (!result.ok) {
-          console.error("[agent-metrics] Error", result.status, result.text);
+          console.error("[sessions] Error", result.status, result.text);
           return NextResponse.json(
             { error: `Botmaker API error: ${result.status}`, details: result.text },
             { status: result.status >= 500 ? 502 : result.status }
@@ -120,23 +110,22 @@ export async function GET(request: NextRequest) {
 
     const seen = new Set<string>();
     const deduped = allItems.filter((it) => {
-      const x = it as { chatId?: string; sessionCreationTime?: string; agentId?: string };
-      if (!x.chatId || !x.sessionCreationTime) return true;
-      const key = `${x.chatId}|${x.sessionCreationTime}|${x.agentId ?? ""}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
+      const id = (it as { id?: string }).id;
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
       return true;
     });
 
     console.log(
-      `[agent-metrics] Returned ${deduped.length} items (deduped from ${allItems.length}) across ${windows.length} window(s)`
+      `[sessions] Returned ${deduped.length} items (deduped from ${allItems.length}) across ${windows.length} window(s)`
     );
 
     return NextResponse.json({ items: deduped, nextPage: null });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch agent metrics", details: message },
+      { error: "Failed to fetch sessions", details: message },
       { status: 502 }
     );
   }

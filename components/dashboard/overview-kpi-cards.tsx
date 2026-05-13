@@ -26,12 +26,12 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <MessageSquare className="size-3.5" />
-            Total conversaciones
+            Total Contactos
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
-            {kpis.totalConversations}
+            {kpis.totalContacts}
           </p>
         </CardContent>
       </Card>

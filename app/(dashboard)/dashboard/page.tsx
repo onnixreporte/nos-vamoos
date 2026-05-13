@@ -39,6 +39,8 @@ import type {
   AgentMetricsPage,
   ChatWithMessagesResponse,
   ChatsPage,
+  SessionItem,
+  SessionsPage,
 } from "@/types/botmaker";
 
 async function fetchMissingChats(
@@ -73,6 +75,7 @@ function isSameDay(from: string, to: string): boolean {
 export default function DashboardPage() {
   const [chats, setChats] = useState<ChatWithMessagesResponse[]>([]);
   const [agentItems, setAgentItems] = useState<AgentMetricsItem[]>([]);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:dashboard", "week");
@@ -98,6 +101,7 @@ export default function DashboardPage() {
     if (!debouncedFilter?.from || !debouncedFilter?.to) {
       setChats([]);
       setAgentItems([]);
+      setSessions([]);
       setLoading(false);
       setError(null);
       return;
@@ -135,6 +139,28 @@ export default function DashboardPage() {
       return acc;
     };
 
+    const fetchAllSessions = async (): Promise<SessionItem[]> => {
+      const params = new URLSearchParams({
+        from: debouncedFilter.from,
+        to: debouncedFilter.to,
+      });
+      let url: string | null = `/api/sessions?${params.toString()}`;
+      const acc: SessionItem[] = [];
+      let pageCount = 0;
+      while (url && pageCount < MAX_PAGES) {
+        pageCount++;
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const page = (await res.json()) as SessionsPage;
+        if (cancelled) return acc;
+        if (page.items?.length) acc.push(...page.items);
+        url = page.nextPage
+          ? `/api/sessions?nextPage=${encodeURIComponent(page.nextPage)}`
+          : null;
+      }
+      return acc;
+    };
+
     const fetchAllAgentMetrics = async (
       status: string
     ): Promise<AgentMetricsItem[]> => {
@@ -167,7 +193,7 @@ export default function DashboardPage() {
         lastRefreshRef.current = refreshTrigger;
 
         if (!isRefresh) {
-          const cached = getCachedPageData<{ chats: ChatWithMessagesResponse[]; agentItems: AgentMetricsItem[] }>(
+          const cached = getCachedPageData<{ chats: ChatWithMessagesResponse[]; agentItems: AgentMetricsItem[]; sessions: SessionItem[] }>(
             "dashboard",
             debouncedFilter.from,
             debouncedFilter.to,
@@ -176,6 +202,7 @@ export default function DashboardPage() {
           if (cached) {
             setChats(cached.chats);
             setAgentItems(cached.agentItems);
+            setSessions(cached.sessions ?? []);
             setLoading(false);
             return;
           }
@@ -186,6 +213,8 @@ export default function DashboardPage() {
         const openItems = await fetchAllAgentMetrics("open");
         if (cancelled) return;
         const closedItems = await fetchAllAgentMetrics("closed");
+        if (cancelled) return;
+        const sessionItems = await fetchAllSessions();
         if (cancelled) return;
         const allAgentItems = [...closedItems, ...openItems];
 
@@ -205,10 +234,12 @@ export default function DashboardPage() {
         setCachedPageData("dashboard", debouncedFilter.from, debouncedFilter.to, debouncedFilter.longTerm, {
           chats: finalChats,
           agentItems: allAgentItems,
+          sessions: sessionItems,
         });
 
         setChats(finalChats);
         setAgentItems(allAgentItems);
+        setSessions(sessionItems);
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -216,6 +247,7 @@ export default function DashboardPage() {
           );
           setChats([]);
           setAgentItems([]);
+          setSessions([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -259,10 +291,35 @@ export default function DashboardPage() {
     [agentItems, filteredChatIds],
   );
 
-  const kpis = useMemo(
-    () => computeOverviewKpis(filteredChats, filteredAgentItems),
-    [filteredChats, filteredAgentItems],
-  );
+  const uniqueSessionUsers = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of sessions) {
+      const id = s.chat?.chat?.chatId;
+      if (id) ids.add(id);
+    }
+    return ids.size;
+  }, [sessions]);
+
+  const uniqueSessionContacts = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of sessions) {
+      const id = s.chat?.chat?.contactId;
+      if (id) ids.add(id);
+    }
+    return ids.size;
+  }, [sessions]);
+
+  const totalSessionsCount = sessions.length;
+
+  const kpis = useMemo(() => {
+    const base = computeOverviewKpis(filteredChats, filteredAgentItems, agentItems);
+    return {
+      ...base,
+      totalConversations: uniqueSessionUsers || base.totalConversations,
+      totalSessions: totalSessionsCount,
+      totalContacts: uniqueSessionContacts || base.totalContacts,
+    };
+  }, [filteredChats, filteredAgentItems, agentItems, uniqueSessionUsers, uniqueSessionContacts, totalSessionsCount]);
 
   const timeGranularity = useMemo(() => {
     if (!appliedFilter?.from || !appliedFilter?.to) return "hour";

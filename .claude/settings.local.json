@@ -10,7 +10,13 @@
       "Bash(cd \"C:\\\\Users\\\\dchaparro\\\\Desktop\\\\Dashboards A Medida\\\\dashboard-nosvamoos\" && node test-chat-lookup.mjs 2>&1)",
       "Bash(cd \"C:\\\\Users\\\\dchaparro\\\\Desktop\\\\Dashboards A Medida\\\\dashboard-nosvamoos\" && node test-chat-lookup2.mjs 2>&1)",
       "Bash(cd \"C:\\\\Users\\\\dchaparro\\\\Desktop\\\\Dashboards A Medida\\\\dashboard-nosvamoos\" && node -e \"\nconst TOKEN = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJDaHJpc3RpYW4gQ2hhcGFycm8iLCJidXNpbmVzc0lkIjoibm9zdmFtb29zXzEiLCJuYW1lIjoiQ2hyaXN0aWFuIENoYXBhcnJvIiwiYXBpIjp0cnVlLCJpZCI6InF4RkJzRnd0TEFiUFNvTTE3MTRDcnlVQXZYNzMiLCJleHAiOjE5Mjk4NzYxNzUsImp0aSI6InF4RkJzRnd0TEFiUFNvTTE3MTRDcnlVQXZYNzMifQ.LvkLoXMnG1ijB8goJufS2ZbH_OxCzFj8rQqlkJgjj09sltZ1cI6lwcU2tTct1_5Rt8q3guqPZ0hInYUJQRbBjQ';\nconst BASE = 'https://api.botmaker.com/v2.0';\n\nasync function run\\(\\) {\n  let url = BASE + '/chats?from=2026-03-03T00:00:00Z&to=2026-03-03T23:59:59Z&long-term-search=true';\n  let all = [];\n  let page = 0;\n  while \\(url\\) {\n    page++;\n    const res = await fetch\\(url, { headers: { 'Accept': 'application/json', 'access-token': TOKEN } }\\);\n    const j = await res.json\\(\\);\n    if \\(!res.ok\\) { console.log\\('ERROR:', JSON.stringify\\(j\\)\\); break; }\n    if \\(j.items?.length\\) all.push\\(...j.items\\);\n    console.log\\('Página ' + page + ': ' + \\(j.items?.length ?? 0\\) + ' items, nextPage=' + \\(j.nextPage ? 'SI' : 'null'\\)\\);\n    url = j.nextPage ? BASE + '/chats?nextPage=' + encodeURIComponent\\(j.nextPage\\) : null;\n  }\n  console.log\\('\\\\nTotal: ' + all.length + ' chats\\\\n'\\);\n  for \\(const c of all\\) {\n    const nombre = [c.firstName, c.lastName].filter\\(Boolean\\).join\\(' '\\) || '\\(sin nombre\\)';\n    console.log\\('  ' + c.chat.chatId + ' | ' + nombre + ' | ' + c.creationTime\\);\n  }\n}\nrun\\(\\).catch\\(console.error\\);\n\" 2>&1)",
-      "Bash(cd \"/c/Users/dchaparro/Desktop/Dashboards A Medida/dashboard-nosvamoos\" && npx tsc --noEmit --pretty 2>&1 | head -30)"
+      "Bash(cd \"/c/Users/dchaparro/Desktop/Dashboards A Medida/dashboard-nosvamoos\" && npx tsc --noEmit --pretty 2>&1 | head -30)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const d=require\\('./test.json'\\); console.log\\('items:',d.items.length\\); const ids=new Set\\(d.items.map\\(i=>i.chat.chat.chatId\\)\\); console.log\\('unique chatIds:', ids.size\\); console.log\\('nextPage:', !!d.nextPage\\);\")",
+      "Bash(node -e \"const d=require\\('./test.json'\\); const cids=new Set\\(d.items.map\\(i=>i.chat.chat.contactId\\)\\); console.log\\('unique contactIds page1:', cids.size\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(node --env-file=.env -e ' *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

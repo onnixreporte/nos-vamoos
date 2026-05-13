@@ -18,6 +18,7 @@ import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { normalizeChannelId } from "@/lib/dashboard-aggregation";
 import { normalizeTypification } from "@/lib/dashboard-filters";
+import { countryFromPhone } from "@/lib/phone-country";
 
 function formatDate(iso: string | undefined): string {
   if (!iso) return "—";
@@ -237,7 +238,11 @@ export function ChatsTable({
                         .filter(Boolean)
                         .join(" ") || "—"}
                     </TableCell>
-                    <TableCell>{item.country ?? "—"}</TableCell>
+                    <TableCell>
+                      {normalizeChannelId(item.chat.channelId) === "WhatsApp"
+                        ? countryFromPhone(item.chat.contactId) ?? item.country ?? "—"
+                        : item.country ?? "—"}
+                    </TableCell>
                     <TableCell className="font-mono text-xs">
                       {item.chat.contactId}
                     </TableCell>

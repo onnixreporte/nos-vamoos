@@ -30,6 +30,7 @@ export function isTestTypification(normalized: string): boolean {
 }
 
 export const EXCLUDED_AGENT_NAMES = new Set([
+  "Alberto Ezequiel Careaga López",
   "Angela Milen",
   "Angela Milena Ojeda Alarcon",
   "Andrés Pangrazio",

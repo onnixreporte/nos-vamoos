@@ -70,6 +70,28 @@ export interface AgentMetricsPage {
   items: AgentMetricsItem[];
 }
 
+export interface SessionItem {
+  id: string;
+  creationTime?: string;
+  startingCause?: string;
+  chat: {
+    chat: {
+      chatId: string;
+      channelId?: string;
+      contactId?: string;
+    };
+    creationTime?: string;
+    lastSessionCreationTime?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
+export interface SessionsPage {
+  nextPage: string | null;
+  items: SessionItem[];
+}
+
 /**
  * Agent list item from GET /agents (List agents).
  * @see api-botmaker.json AgentResponse, AgentsPage

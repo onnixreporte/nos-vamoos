@@ -8,6 +8,8 @@ export interface OverviewKpis {
   totalSalesAmount: number;
   closedConversations: number;
   avgFirstResponseMs: number;
+  totalSessions?: number;
+  totalContacts: number;
 }
 
 function parseNum(s: string | undefined): number {
@@ -21,9 +23,14 @@ function parseNum(s: string | undefined): number {
  */
 export function computeOverviewKpis(
   chats: ChatWithMessagesResponse[],
-  agentItems: AgentMetricsItem[]
+  agentItems: AgentMetricsItem[],
+  agentItemsForUserCount?: AgentMetricsItem[]
 ): OverviewKpis {
-  const totalConversations = chats.length;
+  const uniqueUserIds = new Set<string>();
+  for (const item of agentItemsForUserCount ?? agentItems) {
+    if (item.chatId) uniqueUserIds.add(item.chatId);
+  }
+  const totalConversations = uniqueUserIds.size;
 
   let totalSalesAmount = 0;
   for (const chat of chats) {
@@ -49,11 +56,18 @@ export function computeOverviewKpis(
   const avgFirstResponseMs =
     firstResponseCount > 0 ? firstResponseSumMs / firstResponseCount : 0;
 
+  const uniqueContactIds = new Set<string>();
+  for (const chat of chats) {
+    const id = chat.chat?.contactId;
+    if (id) uniqueContactIds.add(id);
+  }
+
   return {
     totalConversations,
     totalSalesAmount,
     closedConversations: closedConversationIds.size,
     avgFirstResponseMs,
+    totalContacts: uniqueContactIds.size,
   };
 }
 
