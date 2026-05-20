@@ -29,9 +29,14 @@ export interface SalesKpis {
   avgTicket: number;
   avgPassengers: number;
   avgTripDays: number;
+  attendedConversations: number;
+  conversionRateAttended: number;
 }
 
-export function computeSalesKpis(chats: ChatWithMessagesResponse[]): SalesKpis {
+export function computeSalesKpis(
+  chats: ChatWithMessagesResponse[],
+  attendedConversations = 0,
+): SalesKpis {
   const totalChats = chats.length;
   let totalSales = 0;
   let totalAmount = 0;
@@ -66,6 +71,9 @@ export function computeSalesKpis(chats: ChatWithMessagesResponse[]): SalesKpis {
     avgTicket: totalSales > 0 ? totalAmount / totalSales : 0,
     avgPassengers: passengersCount > 0 ? passengersSum / passengersCount : 0,
     avgTripDays: daysCount > 0 ? daysSum / daysCount : 0,
+    attendedConversations,
+    conversionRateAttended:
+      attendedConversations > 0 ? (totalSales / attendedConversations) * 100 : 0,
   };
 }
 

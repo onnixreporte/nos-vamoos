@@ -13,7 +13,6 @@ import {
   Receipt,
   ShoppingCart,
   Users,
-  CalendarDays,
 } from "lucide-react";
 
 interface SalesKpiCardsProps {
@@ -21,9 +20,10 @@ interface SalesKpiCardsProps {
 }
 
 function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString("es-PY", { maximumFractionDigits: 0 });
+  return n.toLocaleString("es-PY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
@@ -42,6 +42,22 @@ export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
           </p>
           <p className="text-xs text-muted-foreground">
             {kpis.totalSales} ventas de {kpis.totalChats} chats
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <TrendingUp className="size-3.5" />
+            Tasa de conversión (atendidas)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-semibold tabular-nums">
+            {kpis.conversionRateAttended.toFixed(1)}%
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {kpis.totalSales} ventas de {kpis.attendedConversations} atendidas
           </p>
         </CardContent>
       </Card>
@@ -94,19 +110,6 @@ export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
             {kpis.avgPassengers > 0 ? kpis.avgPassengers.toFixed(1) : "—"}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-1">
-          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <CalendarDays className="size-3.5" />
-            Prom. días de viaje
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-semibold tabular-nums">
-            {kpis.avgTripDays > 0 ? kpis.avgTripDays.toFixed(1) : "—"}
           </p>
         </CardContent>
       </Card>

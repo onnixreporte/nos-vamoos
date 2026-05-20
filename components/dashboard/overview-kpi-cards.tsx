@@ -55,7 +55,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <Users className="size-3.5" />
             Conversaciones atendidas por agente
-            <InfoTip text="Suma de conversaciones abiertas y cerradas atendidas por agentes en el rango filtrado." />
+            <InfoTip text="Conversaciones atendidas por agentes en el rango filtrado." />
           </CardTitle>
         </CardHeader>
         <CardContent>

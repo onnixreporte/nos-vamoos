@@ -19,12 +19,24 @@ const chartConfig = {
   count: { label: "Consultas", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
+const ALLOWED_ORIGINS = new Set(["organico", "organica", "organic", "pauta", "pautas"]);
+
+function normalizeOrigin(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 export function TravelerOriginBarChart({ data }: TravelerOriginBarChartProps) {
-  const chartData = data.map((d) => ({
-    origin:
-      d.origin.length > 20 ? d.origin.slice(0, 20) + "…" : d.origin,
-    count: d.count,
-  }));
+  const chartData = data
+    .filter((d) => ALLOWED_ORIGINS.has(normalizeOrigin(d.origin)))
+    .map((d) => ({
+      origin:
+        d.origin.length > 20 ? d.origin.slice(0, 20) + "…" : d.origin,
+      count: d.count,
+    }));
 
   return (
     <Card>

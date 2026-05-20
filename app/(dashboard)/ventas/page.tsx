@@ -28,7 +28,9 @@ import {
   buildTestTypificationChatIds,
   chatMatchesAdditionalFilters,
   DEFAULT_ADDITIONAL_FILTERS,
+  EXCLUDED_AGENT_NAMES,
 } from "@/lib/dashboard-filters";
+import { aggregateByAgent } from "@/lib/agent-aggregation";
 import { isTestChat } from "@/lib/test-contacts";
 import type {
   AgentMetricsItem,
@@ -193,10 +195,10 @@ export default function VentasPage() {
           ...new Set(allAgentItems.map((i) => i.chatId).filter((id): id is string => !!id)),
         ].filter((id) => !existingIds.has(id));
 
-        let finalChats = chatList;
+        let finalChats = chatList.filter((c) => !isTestChat(c));
         if (missingIds.length > 0) {
           const extra = await fetchMissingChats(missingIds, controller.signal);
-          if (!cancelled) finalChats = [...chatList, ...extra];
+          if (!cancelled) finalChats = [...finalChats, ...extra.filter((c) => !isTestChat(c))];
         }
         if (cancelled) return;
 
@@ -236,12 +238,19 @@ export default function VentasPage() {
     [chats, agentItems],
   );
 
+  const testTypificationChatIds = useMemo(
+    () => buildTestTypificationChatIds(agentItems),
+    [agentItems],
+  );
+
   const filteredChats = useMemo(
     () =>
-      chats.filter((chat) =>
-        chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
+      chats.filter(
+        (chat) =>
+          !testTypificationChatIds.has(chat.chat.chatId) &&
+          chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
       ),
-    [chats, additionalFilters, metadataMaps],
+    [chats, additionalFilters, metadataMaps, testTypificationChatIds],
   );
 
   const filteredChatIds = useMemo(
@@ -257,7 +266,20 @@ export default function VentasPage() {
     [agentItems, filteredChatIds],
   );
 
-  const kpis = useMemo(() => computeSalesKpis(filteredChats), [filteredChats]);
+  const attendedConversations = useMemo(() => {
+    const agentsAll = aggregateByAgent(agentItems).filter(
+      (a) => !EXCLUDED_AGENT_NAMES.has(a.agentName.trim()),
+    );
+    return agentsAll.reduce(
+      (s, a) => s + a.closedConversations + a.openConversations,
+      0,
+    );
+  }, [agentItems]);
+
+  const kpis = useMemo(
+    () => computeSalesKpis(filteredChats, attendedConversations),
+    [filteredChats, attendedConversations],
+  );
 
   const timeGranularity = useMemo(() => {
     if (!appliedFilter?.from || !appliedFilter?.to) return "hour" as const;
