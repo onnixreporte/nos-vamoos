@@ -2,6 +2,7 @@ import { format, parseISO, startOfDay, startOfHour } from "date-fns";
 import { es } from "date-fns/locale";
 import type { AgentMetricsItem, ChatWithMessagesResponse } from "@/types/botmaker";
 import { toPYTime } from "@/lib/date-filters";
+import { countryFromPhone } from "@/lib/phone-country";
 
 export interface OverviewKpis {
   totalConversations: number;
@@ -244,24 +245,47 @@ export interface DayOfMonthBucket {
 export function groupChatsByDayOfMonth(
   chats: ChatWithMessagesResponse[],
   year: number,
-  month: number
+  month: number,
+  filterFrom?: string,
+  filterTo?: string,
 ): DayOfMonthBucket[] {
   const counts = new Map<number, number>();
   const daysInMonth = new Date(year, month, 0).getDate();
   for (let d = 1; d <= daysInMonth; d++) {
     counts.set(d, 0);
   }
+
+  let minDay = 1;
+  let maxDay = daysInMonth;
+  if (filterFrom) {
+    try {
+      const f = toPYTime(parseISO(filterFrom));
+      if (f.getFullYear() === year && f.getMonth() === month - 1) {
+        minDay = f.getDate();
+      }
+    } catch {}
+  }
+  if (filterTo) {
+    try {
+      const t = toPYTime(parseISO(filterTo));
+      if (t.getFullYear() === year && t.getMonth() === month - 1) {
+        maxDay = t.getDate();
+      }
+    } catch {}
+  }
+
   for (const chat of chats) {
     const raw = chat.lastUserMessageDatetime ?? chat.creationTime;
-    if (!raw) continue;
-    let date: Date;
-    try {
-      date = toPYTime(parseISO(raw));
-    } catch {
-      continue;
+    let day = minDay;
+    if (raw) {
+      try {
+        const date = toPYTime(parseISO(raw));
+        const d = date.getDate();
+        day = Math.min(Math.max(d, minDay), maxDay);
+      } catch {
+        day = minDay;
+      }
     }
-    if (date.getFullYear() !== year || date.getMonth() !== month - 1) continue;
-    const day = date.getDate();
     counts.set(day, (counts.get(day) ?? 0) + 1);
   }
   return Array.from({ length: daysInMonth }, (_, i) => {
@@ -418,7 +442,10 @@ const CODE_TO_NAME: Record<string, string> = {
 
 function normalizeToCode(country: string): string {
   const trimmed = country.trim().toLowerCase();
-  return COUNTRY_NAME_TO_CODE[trimmed] ?? trimmed.toUpperCase().slice(0, 2);
+  if (COUNTRY_NAME_TO_CODE[trimmed]) return COUNTRY_NAME_TO_CODE[trimmed];
+  const firstPart = trimmed.split("/")[0]?.trim();
+  if (firstPart && COUNTRY_NAME_TO_CODE[firstPart]) return COUNTRY_NAME_TO_CODE[firstPart];
+  return trimmed.toUpperCase().slice(0, 2);
 }
 
 function codeToDisplayName(code: string, original: string): string {
@@ -435,7 +462,9 @@ function toCode3(code2: string): string {
 export function countByCountry(chats: ChatWithMessagesResponse[]): CountryCount[] {
   const counts = new Map<string, { name: string; count: number }>();
   for (const chat of chats) {
-    const raw = chat.country?.trim();
+    if (normalizeChannelId(chat.chat?.channelId ?? "") !== "WhatsApp") continue;
+    const fromPhone = countryFromPhone(chat.chat?.contactId);
+    const raw = (fromPhone ?? chat.country)?.trim();
     if (!raw) continue;
     const code = raw.length === 2 ? raw.toUpperCase() : normalizeToCode(raw);
     const key = code || "XX";

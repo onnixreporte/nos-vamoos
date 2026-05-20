@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { parseISO, eachDayOfInterval } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   getDayLabel,
   type HourDayBucket,
@@ -45,13 +47,15 @@ export function ContactScheduleHeatmap({
   filterFrom,
   filterTo,
 }: ContactScheduleHeatmapProps) {
-  const { grid, maxCount } = useMemo(() => {
+  const { grid, maxCount, total } = useMemo(() => {
     const max = Math.max(1, ...data.map((d) => d.count));
     const g: Record<string, number> = {};
+    let sum = 0;
     for (const d of data) {
       g[`${d.dayOfWeek}-${d.hour}`] = d.count;
+      sum += d.count;
     }
-    return { grid: g, maxCount: max };
+    return { grid: g, maxCount: max, total: sum };
   }, [data]);
 
   const visibleDays = useMemo(
@@ -62,11 +66,19 @@ export function ContactScheduleHeatmap({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
+        <CardTitle className="text-sm font-medium flex items-center gap-1.5">
           Horario de contacto (Primer mensaje)
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Heatmap: día de la semana vs. hora del primer mensaje del cliente.</p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Días vs. horas del día
+          Días vs. horas del día · Total: {total}
         </p>
       </CardHeader>
       <CardContent>

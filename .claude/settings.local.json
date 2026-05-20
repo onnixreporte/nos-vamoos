@@ -16,7 +16,10 @@
       "Bash(node -e \"const d=require\\('./test.json'\\); const cids=new Set\\(d.items.map\\(i=>i.chat.chat.contactId\\)\\); console.log\\('unique contactIds page1:', cids.size\\);\")",
       "Bash(node -e ' *)",
       "Bash(node --env-file=.env -e ' *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: empty state charts, country normalization, day-of-month filter range *)",
+      "Bash(git push *)"
     ]
   }
 }

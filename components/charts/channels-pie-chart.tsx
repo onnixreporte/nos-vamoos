@@ -2,6 +2,8 @@
 
 import { Cell, Pie, PieChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   ChartConfig,
   ChartContainer,
@@ -47,10 +49,23 @@ export function ChannelsPieChart({ data }: ChannelsPieChartProps) {
     };
   }
 
+  const total = data.reduce((s, d) => s + d.count, 0);
+
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Canales</CardTitle>
+        <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+          Canales
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Distribución de chats por canal (WhatsApp, Instagram, web, etc.).</p>
+            </TooltipContent>
+          </Tooltip>
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Total: {total}</p>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-4">

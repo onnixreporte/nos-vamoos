@@ -6,9 +6,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration } from "@/lib/agent-aggregation";
 import type { OverviewKpis } from "@/lib/dashboard-aggregation";
-import { MessageSquare, DollarSign, CheckCircle, Clock } from "lucide-react";
+import { MessageSquare, DollarSign, CheckCircle, Clock, Info } from "lucide-react";
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Info className="size-3 text-muted-foreground cursor-help" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="max-w-xs">{text}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface OverviewKpiCardsProps {
   kpis: OverviewKpis;
@@ -27,6 +41,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <MessageSquare className="size-3.5" />
             Total Contactos
+            <InfoTip text="Chats únicos en el rango filtrado." />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -40,6 +55,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <DollarSign className="size-3.5" />
             Monto total ventas
+            <InfoTip text="Suma de monto_venta de chats con venta cargada." />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -53,6 +69,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <CheckCircle className="size-3.5" />
             Conversaciones cerradas
+            <InfoTip text="Chats con al menos una sesión cerrada." />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -66,6 +83,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <Clock className="size-3.5" />
             T. prom. 1ª respuesta
+            <InfoTip text="Tiempo promedio entre asignación de operador y primera respuesta." />
           </CardTitle>
         </CardHeader>
         <CardContent>

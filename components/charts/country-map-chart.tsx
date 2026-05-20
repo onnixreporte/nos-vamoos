@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import { TOPOJSON_NAME_TO_CODE, type CountryCount } from "@/lib/dashboard-aggregation";
 
 const ComposableMap = dynamic(
@@ -62,11 +64,19 @@ export function CountryMapChart({ data }: CountryMapChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
+        <CardTitle className="text-sm font-medium flex items-center gap-1.5">
           Contactos por país
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Distribución geográfica de chats WhatsApp según prefijo telefónico.</p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Cantidad de conversaciones según país de origen
+          Cantidad de conversaciones según país de origen · Total: {data.reduce((s, d) => s + d.count, 0)}
         </p>
       </CardHeader>
       <CardContent>

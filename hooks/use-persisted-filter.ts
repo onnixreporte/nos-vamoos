@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
 
 function readFromStorage(key: string, defaultPreset: string): DateFilter {
@@ -12,18 +12,15 @@ function readFromStorage(key: string, defaultPreset: string): DateFilter {
   return buildPresetRange(defaultPreset as Parameters<typeof buildPresetRange>[0]);
 }
 
-/**
- * Persists the active date filter to localStorage so navigation between pages
- * restores the last filter the user chose for each section.
- *
- * The initial value is read synchronously from localStorage so that both
- * appliedFilter and debouncedFilter can be initialized identically, avoiding
- * a double-fetch on mount.
- */
 export function usePersistedFilter(storageKey: string, defaultPreset = "week") {
   const [filter, setFilterState] = useState<DateFilter | null>(() =>
-    readFromStorage(storageKey, defaultPreset),
+    buildPresetRange(defaultPreset as Parameters<typeof buildPresetRange>[0]),
   );
+
+  useEffect(() => {
+    const stored = readFromStorage(storageKey, defaultPreset);
+    setFilterState(stored);
+  }, [storageKey, defaultPreset]);
 
   const setFilter = useCallback(
     (f: DateFilter | null) => {

@@ -8,6 +8,8 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   ChartConfig,
   ChartContainer,
@@ -29,13 +31,23 @@ const chartConfig = {
 
 export function ConversationsAreaChart({ data }: ConversationsAreaChartProps) {
   const chartData = data.map((d) => ({ label: d.label, count: d.count }));
+  const total = chartData.reduce((s, d) => s + d.count, 0);
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
+        <CardTitle className="text-sm font-medium flex items-center gap-1.5">
           Conversaciones en el tiempo
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Volumen de chats agrupados por día u hora dentro del rango filtrado.</p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
+        <p className="text-xs text-muted-foreground">Total: {total}</p>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[250px] w-full">

@@ -2,6 +2,8 @@
 
 import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   ChartConfig,
   ChartContainer,
@@ -40,13 +42,23 @@ export function AgentSessionsBarChart({
       closed: a.closedConversations,
       open: a.openConversations,
     }));
+  const total = chartData.reduce((s, d) => s + d.closed + d.open, 0);
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
+        <CardTitle className="text-sm font-medium flex items-center gap-1.5">
           Conversaciones por agente
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Conversaciones por agente, separadas en cerradas y abiertas.</p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
+        <p className="text-xs text-muted-foreground">Total: {total}</p>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

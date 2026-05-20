@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import type { DayOfMonthBucket } from "@/lib/dashboard-aggregation";
 import { toPYTime } from "@/lib/date-filters";
 
@@ -65,11 +67,13 @@ export function MonthlyCalendarHeatmap({
   filterFrom,
   filterTo,
 }: MonthlyCalendarHeatmapProps) {
-  const { byDay, maxCount, firstDayOffset } = useMemo(() => {
+  const { byDay, maxCount, firstDayOffset, total } = useMemo(() => {
     const byDay = new Map<number, number>();
     let max = 0;
+    let sum = 0;
     for (const d of data) {
       byDay.set(d.day, d.count);
+      sum += d.count;
       if (d.count > max) max = d.count;
     }
     const firstDate = new Date(year, month - 1, 1);
@@ -78,6 +82,7 @@ export function MonthlyCalendarHeatmap({
       byDay,
       maxCount: Math.max(1, max),
       firstDayOffset: firstDayOfWeek,
+      total: sum,
     };
   }, [data, year, month]);
 
@@ -94,11 +99,19 @@ export function MonthlyCalendarHeatmap({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium capitalize">
+        <CardTitle className="text-sm font-medium capitalize flex items-center gap-1.5">
           Calendario del mes — {monthName}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">Chats por día del mes seleccionado.</p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Chats por día
+          Chats por día · Total: {total}
         </p>
       </CardHeader>
       <CardContent>

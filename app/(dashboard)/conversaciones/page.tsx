@@ -14,6 +14,7 @@ import {
   isTestTypification,
   normalizeTypification,
 } from "@/lib/dashboard-filters";
+import { isTestChat } from "@/lib/test-contacts";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -428,6 +429,7 @@ export default function ConversacionesPage() {
 
   const filteredItems = useMemo(() => {
     return chats.filter((chat) => {
+      if (isTestChat(chat)) return false;
       const typ = combinedMetricsByChatId[chat.chat.chatId]?.typification;
       if (typ && isTestTypification(typ)) return false;
       return chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps);

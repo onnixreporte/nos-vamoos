@@ -9,13 +9,14 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink } from "lucide-react";
 import { normalizeChannelId } from "@/lib/dashboard-aggregation";
 import { normalizeTypification } from "@/lib/dashboard-filters";
 import { countryFromPhone } from "@/lib/phone-country";
@@ -40,6 +41,26 @@ function formatDurationMs(value: number): string {
 }
 
 const PAGE_SIZE = 20;
+
+function csvEscape(value: unknown): string {
+  if (value == null) return "";
+  const s = String(value);
+  if (/[",\n\r;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCsv(filename: string, rows: string[][]) {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 const VARIABLE_COLUMNS: { key: string; label: string }[] = [
   { key: "nombre_cliente", label: "Nombre cliente" },
@@ -181,6 +202,58 @@ export function ChatsTable({
     [filteredItems, currentPage],
   );
 
+  const handleExportCsv = () => {
+    const header = [
+      "Nombre",
+      "País",
+      "Contacto",
+      "Canal",
+      "Primer mensaje",
+      "Último mensaje",
+      "Nombre de agente",
+      "Tipificación",
+      "Conversaciones",
+      "Mensajes bot",
+      "Mensajes agente",
+      "Tiempo resp. agente",
+      "Etiquetas",
+      ...VARIABLE_COLUMNS.map((v) => v.label),
+      "Link",
+    ];
+
+    const rows = filteredItems.map((item) => {
+      const metrics = chatMetricsByChatId?.[item.chat.chatId];
+      const channel = normalizeChannelId(item.chat.channelId);
+      const country =
+        channel === "WhatsApp"
+          ? countryFromPhone(item.chat.contactId) ?? item.country ?? ""
+          : item.country ?? "";
+      const link =
+        metrics?.conversationLink ||
+        `https://go.botmaker.com/#/chats/${item.chat.chatId}`;
+      return [
+        [item.firstName, item.lastName].filter(Boolean).join(" "),
+        country,
+        item.chat.contactId ?? "",
+        channel,
+        item.creationTime ? formatDate(item.creationTime) : "",
+        item.lastUserMessageDatetime ? formatDate(item.lastUserMessageDatetime) : "",
+        metrics?.agentName ?? "",
+        metrics?.typification ? normalizeTypification(metrics.typification) : "",
+        metrics?.conversationCount ?? "",
+        metrics?.botMessageCount ?? "",
+        metrics?.agentMessageCount ?? "",
+        formatDurationMs(metrics?.avgAgentResponseMs ?? 0),
+        (item.tags ?? []).join(", "),
+        ...VARIABLE_COLUMNS.map(({ key }) => item.variables?.[key] ?? ""),
+        link,
+      ].map((v) => String(v ?? ""));
+    });
+
+    const ts = format(new Date(), "yyyyMMdd-HHmm");
+    downloadCsv(`conversaciones-${ts}.csv`, [header, ...rows]);
+  };
+
   return (
       <div className="min-w-0 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card2">
@@ -191,6 +264,15 @@ export function ChatsTable({
               setCurrentPage(1);
             }}
           />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={filteredItems.length === 0}
+          >
+            <Download className="size-4" />
+            Exportar CSV
+          </Button>
         </div>
 
         <div className="overflow-auto max-h-[70vh] rounded-md border bg-card">
@@ -311,6 +393,16 @@ export function ChatsTable({
                 ))
               )}
             </TableBody>
+            <TableFooter className="sticky bottom-0 z-10 bg-background">
+              <TableRow>
+                <TableCell
+                  colSpan={14 + VARIABLE_COLUMNS.length}
+                  className="text-xs font-medium"
+                >
+                  Total: {totalFiltered} {totalFiltered === 1 ? "chat" : "chats"}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
           </Table>
         </div>
 

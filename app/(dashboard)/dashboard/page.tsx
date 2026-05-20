@@ -270,12 +270,19 @@ export default function DashboardPage() {
     [chats, agentItems],
   );
 
+  const testTypificationChatIds = useMemo(
+    () => buildTestTypificationChatIds(agentItems),
+    [agentItems],
+  );
+
   const filteredChats = useMemo(
     () =>
-      chats.filter((chat) =>
-        chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
+      chats.filter(
+        (chat) =>
+          !testTypificationChatIds.has(chat.chat.chatId) &&
+          chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
       ),
-    [chats, additionalFilters, metadataMaps],
+    [chats, additionalFilters, metadataMaps, testTypificationChatIds],
   );
 
   const filteredChatIds = useMemo(
@@ -291,35 +298,16 @@ export default function DashboardPage() {
     [agentItems, filteredChatIds],
   );
 
-  const uniqueSessionUsers = useMemo(() => {
-    const ids = new Set<string>();
-    for (const s of sessions) {
-      const id = s.chat?.chat?.chatId;
-      if (id) ids.add(id);
-    }
-    return ids.size;
-  }, [sessions]);
-
-  const uniqueSessionContacts = useMemo(() => {
-    const ids = new Set<string>();
-    for (const s of sessions) {
-      const id = s.chat?.chat?.contactId;
-      if (id) ids.add(id);
-    }
-    return ids.size;
-  }, [sessions]);
-
   const totalSessionsCount = sessions.length;
 
   const kpis = useMemo(() => {
     const base = computeOverviewKpis(filteredChats, filteredAgentItems, agentItems);
     return {
       ...base,
-      totalConversations: uniqueSessionUsers || base.totalConversations,
       totalSessions: totalSessionsCount,
-      totalContacts: uniqueSessionContacts || base.totalContacts,
+      totalContacts: filteredChats.length,
     };
-  }, [filteredChats, filteredAgentItems, agentItems, uniqueSessionUsers, uniqueSessionContacts, totalSessionsCount]);
+  }, [filteredChats, filteredAgentItems, agentItems, totalSessionsCount]);
 
   const timeGranularity = useMemo(() => {
     if (!appliedFilter?.from || !appliedFilter?.to) return "hour";
@@ -371,8 +359,10 @@ export default function DashboardPage() {
         filteredChats,
         calendarYearMonth.year,
         calendarYearMonth.month,
+        appliedFilter?.from,
+        appliedFilter?.to,
       ),
-    [filteredChats, calendarYearMonth.year, calendarYearMonth.month],
+    [filteredChats, calendarYearMonth.year, calendarYearMonth.month, appliedFilter?.from, appliedFilter?.to],
   );
 
   const countryCounts = useMemo(
