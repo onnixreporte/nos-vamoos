@@ -9,7 +9,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration } from "@/lib/agent-aggregation";
 import type { OverviewKpis } from "@/lib/dashboard-aggregation";
-import { MessageSquare, DollarSign, CheckCircle, Clock, Info } from "lucide-react";
+import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users } from "lucide-react";
 
 function InfoTip({ text }: { text: string }) {
   return (
@@ -35,7 +35,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
   });
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -47,6 +47,20 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
             {kpis.totalContacts}
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Users className="size-3.5" />
+            Conversaciones atendidas por agente
+            <InfoTip text="Suma de conversaciones abiertas y cerradas atendidas por agentes en el rango filtrado." />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-semibold tabular-nums">
+            {kpis.attendedConversations.toLocaleString("es")}
           </p>
         </CardContent>
       </Card>

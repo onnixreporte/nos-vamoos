@@ -11,6 +11,7 @@ export interface OverviewKpis {
   avgFirstResponseMs: number;
   totalSessions?: number;
   totalContacts: number;
+  attendedConversations: number;
 }
 
 function parseNum(s: string | undefined): number {
@@ -63,12 +64,19 @@ export function computeOverviewKpis(
     if (id) uniqueContactIds.add(id);
   }
 
+  let attendedConversations = 0;
+  for (const item of agentItems) {
+    attendedConversations +=
+      parseNum(item.openSessions) + parseNum(item.closedSessions);
+  }
+
   return {
     totalConversations,
     totalSalesAmount,
     closedConversations: closedConversationIds.size,
     avgFirstResponseMs,
     totalContacts: uniqueContactIds.size,
+    attendedConversations,
   };
 }
 

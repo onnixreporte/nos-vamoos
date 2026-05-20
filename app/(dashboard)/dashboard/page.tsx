@@ -300,14 +300,66 @@ export default function DashboardPage() {
 
   const totalSessionsCount = sessions.length;
 
+  const agents = useMemo(
+    () =>
+      aggregateByAgent(filteredAgentItems).filter(
+        (a) => !EXCLUDED_AGENT_NAMES.has(a.agentName.trim()),
+      ),
+    [filteredAgentItems],
+  );
+
+  const agentsAll = useMemo(
+    () =>
+      aggregateByAgent(agentItems).filter(
+        (a) => !EXCLUDED_AGENT_NAMES.has(a.agentName.trim()),
+      ),
+    [agentItems],
+  );
+
+  const avgFirstResponseMsAll = useMemo(() => {
+    let sumMs = 0;
+    let count = 0;
+    for (const item of agentItems) {
+      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
+      const n = Number(
+        String(item.fromOpAssignedToOpFirstResponse ?? "").replace(/[^0-9.-]/g, ""),
+      );
+      const ms = Number.isFinite(n) ? n * 1000 : 0;
+      if (ms > 0) {
+        sumMs += ms;
+        count += 1;
+      }
+    }
+    return count > 0 ? sumMs / count : 0;
+  }, [agentItems]);
+
   const kpis = useMemo(() => {
     const base = computeOverviewKpis(filteredChats, filteredAgentItems, agentItems);
+    const attendedConversations = agentsAll.reduce(
+      (s, a) => s + a.closedConversations + a.openConversations,
+      0,
+    );
+    const closedConversations = agentsAll.reduce(
+      (s, a) => s + a.closedConversations,
+      0,
+    );
     return {
       ...base,
       totalSessions: totalSessionsCount,
       totalContacts: filteredChats.length,
+      attendedConversations,
+      closedConversations,
+      avgFirstResponseMs: avgFirstResponseMsAll,
     };
-  }, [filteredChats, filteredAgentItems, agentItems, totalSessionsCount]);
+  }, [
+    filteredChats,
+    filteredAgentItems,
+    agentItems,
+    totalSessionsCount,
+    agents,
+    agentsAll,
+    avgFirstResponseMsAll,
+  ]);
 
   const timeGranularity = useMemo(() => {
     if (!appliedFilter?.from || !appliedFilter?.to) return "hour";
@@ -332,14 +384,6 @@ export default function DashboardPage() {
   const channelCounts = useMemo(
     () => countByChannel(filteredChats),
     [filteredChats],
-  );
-
-  const agents = useMemo(
-    () =>
-      aggregateByAgent(filteredAgentItems).filter(
-        (a) => !EXCLUDED_AGENT_NAMES.has(a.agentName.trim()),
-      ),
-    [filteredAgentItems],
   );
 
   const contactScheduleData = useMemo(
@@ -406,7 +450,7 @@ export default function DashboardPage() {
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ChannelsPieChart data={channelCounts} />
-            <AgentSessionsBarChart agents={agents} limit={8} />
+            <AgentSessionsBarChart agents={agentsAll} limit={8} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ContactScheduleHeatmap

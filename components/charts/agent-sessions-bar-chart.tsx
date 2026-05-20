@@ -42,7 +42,10 @@ export function AgentSessionsBarChart({
       closed: a.closedConversations,
       open: a.openConversations,
     }));
-  const total = chartData.reduce((s, d) => s + d.closed + d.open, 0);
+  const total = agents.reduce(
+    (s, a) => s + a.closedConversations + a.openConversations,
+    0
+  );
 
   return (
     <Card>
