@@ -83,7 +83,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <CheckCircle className="size-3.5" />
             Conversaciones cerradas
-            <InfoTip text="Chats con al menos una sesión cerrada." />
+            <InfoTip text="Chats cerrados." />
           </CardTitle>
         </CardHeader>
         <CardContent>
