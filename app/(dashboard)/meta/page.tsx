@@ -16,11 +16,9 @@ import {
   sumInsights,
 } from "@/lib/meta-aggregation";
 import { groupConversationsByTime } from "@/lib/dashboard-aggregation";
-import { isTestChat } from "@/lib/test-contacts";
+import { fetchAllChatsWithGapFill } from "@/lib/chats-client";
 import type { MetaInsightsRow } from "@/lib/meta-types";
-import type { ChatWithMessagesResponse, ChatsPage } from "@/types/botmaker";
-
-const MAX_CHAT_PAGES = 200;
+import type { ChatWithMessagesResponse } from "@/types/botmaker";
 
 interface MetaPayload {
   data: MetaInsightsRow[];
@@ -35,32 +33,6 @@ async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
   return (await res.json()) as T;
 }
 
-async function fetchAllChats(
-  filter: DateFilter,
-  signal: AbortSignal,
-): Promise<ChatWithMessagesResponse[]> {
-  const params = new URLSearchParams();
-  params.set("from", filter.from);
-  params.set("to", filter.to);
-  if (filter.longTerm) params.set("long-term-search", "true");
-  let url: string | null = `/api/chats?${params.toString()}`;
-  const acc: ChatWithMessagesResponse[] = [];
-  let pages = 0;
-  while (url && pages < MAX_CHAT_PAGES) {
-    pages++;
-    const res = await fetch(url, { signal });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.error ?? `Error ${res.status}`);
-    }
-    const page = (await res.json()) as ChatsPage;
-    if (page.items?.length) acc.push(...page.items);
-    url = page.nextPage
-      ? `/api/chats?nextPage=${encodeURIComponent(page.nextPage)}`
-      : null;
-  }
-  return acc.filter((c) => !isTestChat(c));
-}
 
 export default function MetaPage() {
   const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:meta", "month");
@@ -114,7 +86,7 @@ export default function MetaPage() {
           fetchJson<MetaPayload>(`/api/meta/insights${base}`, controller.signal),
           fetchJson<MetaPayload>(`/api/meta/insights?${dailyQs.toString()}`, controller.signal),
           fetchJson<MetaPayload>(`/api/meta/campaigns${base}`, controller.signal),
-          fetchAllChats(debouncedFilter, controller.signal),
+          fetchAllChatsWithGapFill(debouncedFilter, controller.signal),
         ]);
         if (cancelled) return;
         setAccountRows(account.data ?? []);

@@ -9,7 +9,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration } from "@/lib/agent-aggregation";
 import type { OverviewKpis } from "@/lib/dashboard-aggregation";
-import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users, Timer } from "lucide-react";
+import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users, Timer, Activity } from "lucide-react";
 
 function InfoTip({ text }: { text: string }) {
   return (
@@ -35,7 +35,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
   });
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -47,6 +47,20 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
             {kpis.totalContacts}
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Activity className="size-3.5" />
+            Sesiones
+            <InfoTip text="Total de sesiones (aperturas de conversación) en el rango filtrado." />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-semibold tabular-nums">
+            {(kpis.totalSessions ?? 0).toLocaleString("es")}
           </p>
         </CardContent>
       </Card>
