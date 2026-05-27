@@ -8,6 +8,7 @@ import {
   Users,
   MapPin,
   MessageSquare,
+  GitCompareArrows,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -40,6 +41,11 @@ const navItems = [
     title: "Conversaciones",
     href: "/conversaciones",
     icon: MessageSquare,
+  },
+  {
+    title: "Comparación",
+    href: "/comparacion",
+    icon: GitCompareArrows,
   },
 ];
 

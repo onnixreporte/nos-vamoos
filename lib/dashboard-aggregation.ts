@@ -9,6 +9,8 @@ export interface OverviewKpis {
   totalSalesAmount: number;
   closedConversations: number;
   avgFirstResponseMs: number;
+  avgAttendingMs: number;
+  avgBotAttendingMs: number;
   totalSessions?: number;
   totalContacts: number;
   attendedConversations: number;
@@ -75,6 +77,8 @@ export function computeOverviewKpis(
     totalSalesAmount,
     closedConversations: closedConversationIds.size,
     avgFirstResponseMs,
+    avgAttendingMs: 0,
+    avgBotAttendingMs: 0,
     totalContacts: uniqueContactIds.size,
     attendedConversations,
   };

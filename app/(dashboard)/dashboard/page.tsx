@@ -343,6 +343,42 @@ export default function DashboardPage() {
       (s, a) => s + a.closedConversations,
       0,
     );
+    let attendingSum = 0;
+    let attendingWeight = 0;
+    for (const a of agentsAll) {
+      const w = a.closedConversations;
+      if (w > 0 && a.avgAttendingTimeMs > 0) {
+        attendingSum += a.avgAttendingTimeMs * w;
+        attendingWeight += w;
+      }
+    }
+    const avgAttendingMs =
+      attendingWeight > 0 ? attendingSum / attendingWeight : 0;
+
+    const chatSessionStartMap = new Map<string, string>();
+    for (const c of chats) {
+      const id = c.chat?.chatId;
+      if (!id) continue;
+      const start = c.lastSessionCreationTime ?? c.creationTime;
+      if (start) chatSessionStartMap.set(id, start);
+    }
+    const MAX_BOT_MS = 24 * 60 * 60 * 1000;
+    let botSumMs = 0;
+    let botCount = 0;
+    for (const item of agentItems) {
+      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
+      if (!item.chatId || !item.sessionCreationTime) continue;
+      const sessionStart = chatSessionStartMap.get(item.chatId);
+      if (!sessionStart) continue;
+      const diff =
+        new Date(item.sessionCreationTime).getTime() -
+        new Date(sessionStart).getTime();
+      if (diff > 0 && diff < MAX_BOT_MS) {
+        botSumMs += diff;
+        botCount += 1;
+      }
+    }
+    const avgBotAttendingMs = botCount > 0 ? botSumMs / botCount : 0;
     return {
       ...base,
       totalSessions: totalSessionsCount,
@@ -350,11 +386,14 @@ export default function DashboardPage() {
       attendedConversations,
       closedConversations,
       avgFirstResponseMs: avgFirstResponseMsAll,
+      avgAttendingMs,
+      avgBotAttendingMs,
     };
   }, [
     filteredChats,
     filteredAgentItems,
     agentItems,
+    chats,
     totalSessionsCount,
     agents,
     agentsAll,
