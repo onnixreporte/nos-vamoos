@@ -27,8 +27,13 @@ interface MetaPayload {
 async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
   const res = await fetch(url, { signal });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body?.error ?? `Error ${res.status}`);
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      details?: string;
+    };
+    const base = body?.error ?? `Error ${res.status}`;
+    const details = body?.details ? ` — ${body.details.slice(0, 300)}` : "";
+    throw new Error(`${base}${details}`);
   }
   return (await res.json()) as T;
 }
