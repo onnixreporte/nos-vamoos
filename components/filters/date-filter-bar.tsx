@@ -39,6 +39,7 @@ export interface DateFilterBarProps {
   additionalFilters?: AdditionalFilters;
   onAdditionalFiltersChange?: (filters: AdditionalFilters) => void;
   additionalFilterOptions?: AdditionalFilterOptions;
+  hideTimeInputs?: boolean;
 }
 
 function detectPreset(filter: DateFilter | null): FilterPreset | null {
@@ -60,6 +61,7 @@ export function DateFilterBar({
   additionalFilters,
   onAdditionalFiltersChange,
   additionalFilterOptions,
+  hideTimeInputs = false,
 }: DateFilterBarProps) {
   const [activePreset, setActivePreset] = useState<FilterPreset | null>(
     () => detectPreset(appliedFilter) ?? defaultPreset,
@@ -119,7 +121,9 @@ export function DateFilterBar({
 
   const filterSummary =
     activePreset === "custom" && appliedFilter
-      ? `${format(new Date(appliedFilter.from), "dd/MM/yyyy HH:mm", { locale: es })} – ${format(new Date(appliedFilter.to), "dd/MM/yyyy HH:mm", { locale: es })}`
+      ? hideTimeInputs
+        ? `${format(new Date(appliedFilter.from), "dd/MM/yyyy", { locale: es })} – ${format(new Date(appliedFilter.to), "dd/MM/yyyy", { locale: es })}`
+        : `${format(new Date(appliedFilter.from), "dd/MM/yyyy HH:mm", { locale: es })} – ${format(new Date(appliedFilter.to), "dd/MM/yyyy HH:mm", { locale: es })}`
       : null;
 
   const selectedAdditionalFilters = additionalFilters ?? {
@@ -277,37 +281,41 @@ export function DateFilterBar({
             </Popover>
           </div>
 
-          <div className="space-y-1 space-x-1">
-            <label
-              htmlFor="time-from"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Desde 
-            </label>
-            <Input
-              type="time"
-              id="time-from"
-              value={fromTime}
-              onChange={(e) => setFromTime(e.target.value)}
-              className="w-28 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-            />
-          </div>
+          {!hideTimeInputs && (
+            <>
+              <div className="space-y-1 space-x-1">
+                <label
+                  htmlFor="time-from"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Desde
+                </label>
+                <Input
+                  type="time"
+                  id="time-from"
+                  value={fromTime}
+                  onChange={(e) => setFromTime(e.target.value)}
+                  className="w-28 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                />
+              </div>
 
-          <div className="space-y-1 space-x-1">
-            <label
-              htmlFor="time-to"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Hasta 
-            </label>
-            <Input
-              type="time"
-              id="time-to"
-              value={toTime}
-              onChange={(e) => setToTime(e.target.value)}
-              className="w-28 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-            />
-          </div>
+              <div className="space-y-1 space-x-1">
+                <label
+                  htmlFor="time-to"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Hasta
+                </label>
+                <Input
+                  type="time"
+                  id="time-to"
+                  value={toTime}
+                  onChange={(e) => setToTime(e.target.value)}
+                  className="w-28 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                />
+              </div>
+            </>
+          )}
 
           <Button
             onClick={applyCustomFilter}

@@ -18,9 +18,12 @@ No test suite is configured. Verification is done via `npm run build` + manual b
 Requires `.env` (or `.env.local`) with:
 ```
 BOTMAKER_ACCESS_TOKEN=<token>
+META_ACCESS_TOKEN=<meta marketing api token, ads_read>
+META_AD_ACCOUNT_ID=<ad account id sin prefijo act_>
+META_API_VERSION=v25.0
 ```
 
-The token is used server-side only — never exposed to the browser. All Botmaker API calls go through `app/api/*` routes.
+Todos los tokens se usan server-side — nunca se exponen al browser. Las llamadas a Botmaker pasan por `app/api/*` y las de Meta Marketing API por `app/api/meta/*`.
 
 ## Architecture
 

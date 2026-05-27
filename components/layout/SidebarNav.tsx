@@ -9,6 +9,7 @@ import {
   MapPin,
   MessageSquare,
   GitCompareArrows,
+  Megaphone,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -46,6 +47,11 @@ const navItems = [
     title: "Comparación",
     href: "/comparacion",
     icon: GitCompareArrows,
+  },
+  {
+    title: "Meta Ads",
+    href: "/meta",
+    icon: Megaphone,
   },
 ];
 
