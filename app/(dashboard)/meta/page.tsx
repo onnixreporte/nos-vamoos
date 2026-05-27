@@ -112,8 +112,15 @@ export default function MetaPage() {
   const spendByDay = useMemo(() => groupSpendByDay(dailyRows), [dailyRows]);
   const campaigns = useMemo(() => aggregateCampaigns(campaignRows), [campaignRows]);
   const conversationsByDay = useMemo(
-    () => groupConversationsByTime(chats, "day"),
-    [chats],
+    () =>
+      groupConversationsByTime(
+        chats,
+        "day",
+        false,
+        debouncedFilter?.from,
+        debouncedFilter?.to,
+      ),
+    [chats, debouncedFilter?.from, debouncedFilter?.to],
   );
 
   return (

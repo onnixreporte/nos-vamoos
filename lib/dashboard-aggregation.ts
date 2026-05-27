@@ -98,7 +98,9 @@ export interface TimeBucket {
 export function groupConversationsByTime(
   chats: ChatWithMessagesResponse[],
   granularity: "hour" | "day",
-  isToday = false
+  isToday = false,
+  rangeFromIso?: string,
+  rangeToIso?: string,
 ): TimeBucket[] {
   const buckets = new Map<string, number>();
 
@@ -107,15 +109,25 @@ export function groupConversationsByTime(
   const nowPY = toPYTime(new Date());
   const currentHourKey = format(startOfHour(nowPY), "HH:mm", { locale: es });
 
+  const rangeFromMs = rangeFromIso ? new Date(rangeFromIso).getTime() : null;
+  const rangeToMs = rangeToIso ? new Date(rangeToIso).getTime() : null;
+
   for (const chat of chats) {
     const raw = chat.lastUserMessageDatetime ?? chat.creationTime;
     if (!raw) continue;
     let date: Date;
+    let parsedMs: number;
     try {
-      date = toPYTime(parseISO(raw));
+      const parsed = parseISO(raw);
+      parsedMs = parsed.getTime();
+      date = toPYTime(parsed);
     } catch {
       continue;
     }
+
+    if (rangeFromMs !== null && parsedMs < rangeFromMs) continue;
+    if (rangeToMs !== null && parsedMs > rangeToMs) continue;
+
     const key =
       granularity === "hour"
         ? format(startOfHour(date), "HH:mm", { locale: es })

@@ -411,8 +411,15 @@ export default function DashboardPage() {
   }, [appliedFilter?.from]);
 
   const timeBuckets = useMemo(
-    () => groupConversationsByTime(filteredChats, timeGranularity, isFilterToday),
-    [filteredChats, timeGranularity, isFilterToday],
+    () =>
+      groupConversationsByTime(
+        filteredChats,
+        timeGranularity,
+        isFilterToday,
+        appliedFilter?.from,
+        appliedFilter?.to,
+      ),
+    [filteredChats, timeGranularity, isFilterToday, appliedFilter?.from, appliedFilter?.to],
   );
 
   const topDestinations = useMemo(
