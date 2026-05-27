@@ -32,6 +32,7 @@ import {
 } from "@/lib/dashboard-filters";
 import { aggregateByAgent } from "@/lib/agent-aggregation";
 import { isTestChat } from "@/lib/test-contacts";
+import { isChatInRange } from "@/lib/chats-client";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -248,9 +249,11 @@ export default function VentasPage() {
       chats.filter(
         (chat) =>
           !testTypificationChatIds.has(chat.chat.chatId) &&
-          chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
+          chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps) &&
+          (!appliedFilter?.from || !appliedFilter?.to ||
+            isChatInRange(chat, appliedFilter.from, appliedFilter.to)),
       ),
-    [chats, additionalFilters, metadataMaps, testTypificationChatIds],
+    [chats, additionalFilters, metadataMaps, testTypificationChatIds, appliedFilter?.from, appliedFilter?.to],
   );
 
   const filteredChatIds = useMemo(

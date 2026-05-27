@@ -34,6 +34,7 @@ import {
   EXCLUDED_AGENT_NAMES,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
+import { isChatInRange } from "@/lib/chats-client";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -280,9 +281,11 @@ export default function DashboardPage() {
       chats.filter(
         (chat) =>
           !testTypificationChatIds.has(chat.chat.chatId) &&
-          chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps),
+          chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps) &&
+          (!appliedFilter?.from || !appliedFilter?.to ||
+            isChatInRange(chat, appliedFilter.from, appliedFilter.to)),
       ),
-    [chats, additionalFilters, metadataMaps, testTypificationChatIds],
+    [chats, additionalFilters, metadataMaps, testTypificationChatIds, appliedFilter?.from, appliedFilter?.to],
   );
 
   const filteredChatIds = useMemo(

@@ -87,10 +87,33 @@ async function fetchMissingChats(
 }
 
 /**
+ * Keep chat only if its user-activity timestamp falls within the range.
+ * Uses lastUserMessageDatetime as primary signal (last message from client),
+ * falls back to creationTime for brand-new chats without user messages yet.
+ * Drops chats whose timestamp is missing or outside the range so KPIs and
+ * charts stay coherent across the dashboard.
+ */
+export function isChatInRange(
+  chat: ChatWithMessagesResponse,
+  fromIso: string,
+  toIso: string,
+): boolean {
+  const fromMs = new Date(fromIso).getTime();
+  const toMs = new Date(toIso).getTime();
+  const raw = chat.lastUserMessageDatetime ?? chat.creationTime;
+  if (!raw) return false;
+  const t = new Date(raw).getTime();
+  if (!Number.isFinite(t)) return false;
+  return t >= fromMs && t <= toMs;
+}
+
+/**
  * Fetch chats matching what /dashboard's "Total Contactos" KPI counts:
  * - chats listados por /api/chats
  * - gap-fill: chats faltantes presentes en agent-metrics
  * - excluye test contacts y test typifications
+ * - excluye chats cuyo último mensaje del cliente cae fuera del rango filtrado
+ *   (coherencia con chart "Conversaciones en el tiempo")
  */
 export async function fetchAllChatsWithGapFill(
   range: DateFilter,
@@ -117,5 +140,6 @@ export async function fetchAllChatsWithGapFill(
   if (testTypIds.size > 0) {
     finalChats = finalChats.filter((c) => !testTypIds.has(c.chat.chatId));
   }
+  finalChats = finalChats.filter((c) => isChatInRange(c, range.from, range.to));
   return finalChats;
 }

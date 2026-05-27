@@ -15,6 +15,7 @@ import {
   normalizeTypification,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
+import { isChatInRange } from "@/lib/chats-client";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -432,9 +433,16 @@ export default function ConversacionesPage() {
       if (isTestChat(chat)) return false;
       const typ = combinedMetricsByChatId[chat.chat.chatId]?.typification;
       if (typ && isTestTypification(typ)) return false;
+      if (
+        appliedFilter?.from &&
+        appliedFilter?.to &&
+        !isChatInRange(chat, appliedFilter.from, appliedFilter.to)
+      ) {
+        return false;
+      }
       return chatMatchesAdditionalFilters(chat, additionalFilters, metadataMaps);
     });
-  }, [chats, additionalFilters, metadataMaps, combinedMetricsByChatId]);
+  }, [chats, additionalFilters, metadataMaps, combinedMetricsByChatId, appliedFilter?.from, appliedFilter?.to]);
 
   return (
     <div className="min-w-0 space-y-6">

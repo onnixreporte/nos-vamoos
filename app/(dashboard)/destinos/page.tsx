@@ -26,6 +26,7 @@ import {
   DEFAULT_ADDITIONAL_FILTERS,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
+import { isChatInRange } from "@/lib/chats-client";
 import type {
   ChatWithMessagesResponse,
   ChatsPage,
@@ -119,10 +120,13 @@ export default function DestinosPage() {
   );
   const filteredChats = useMemo(
     () =>
-      chats.filter((chat) =>
-        chatMatchesAdditionalFilters(chat, additionalFilters),
+      chats.filter(
+        (chat) =>
+          chatMatchesAdditionalFilters(chat, additionalFilters) &&
+          (!appliedFilter?.from || !appliedFilter?.to ||
+            isChatInRange(chat, appliedFilter.from, appliedFilter.to)),
       ),
-    [chats, additionalFilters],
+    [chats, additionalFilters, appliedFilter?.from, appliedFilter?.to],
   );
 
   const kpis = useMemo(() => computeDestinationKpis(filteredChats), [filteredChats]);
