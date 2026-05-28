@@ -13,9 +13,9 @@ export interface MetaEnv {
 }
 
 export function readMetaEnv(): MetaEnv | { error: string } {
-  const token = process.env.META_ACCESS_TOKEN;
+  const token = process.env.META_ACCESS_TOKEN_PRIVATE;
   const accountId = process.env.META_AD_ACCOUNT_ID;
-  if (!token) return { error: "META_ACCESS_TOKEN is not configured" };
+  if (!token) return { error: "META_ACCESS_TOKEN_PRIVATE is not configured" };
   if (!accountId) return { error: "META_AD_ACCOUNT_ID is not configured" };
   const version = process.env.META_API_VERSION || DEFAULT_VERSION;
   return { token, accountId: accountId.replace(/^act_/, ""), version };

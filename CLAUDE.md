@@ -18,7 +18,7 @@ No test suite is configured. Verification is done via `npm run build` + manual b
 Requires `.env` (or `.env.local`) with:
 ```
 BOTMAKER_ACCESS_TOKEN=<token>
-META_ACCESS_TOKEN=<meta marketing api token, ads_read>
+META_ACCESS_TOKEN_PRIVATE=<meta system user token, ads_read, long-lived>
 META_AD_ACCOUNT_ID=<ad account id sin prefijo act_>
 META_API_VERSION=v25.0
 ```
