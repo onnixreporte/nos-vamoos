@@ -324,6 +324,31 @@ export function groupChatsByDayOfMonth(
   });
 }
 
+/**
+ * Count sales (chats with monto_venta > 0) per day of month.
+ * Returns a Map<day, count>.
+ */
+export function countSalesByDayOfMonth(
+  chats: ChatWithMessagesResponse[],
+  year: number,
+  month: number,
+): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const chat of chats) {
+    const amt = parseNum(chat.variables?.monto_venta);
+    if (amt <= 0) continue;
+    const raw = chat.lastUserMessageDatetime ?? chat.creationTime;
+    if (!raw) continue;
+    try {
+      const date = toPYTime(parseISO(raw));
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1) continue;
+      const day = date.getDate();
+      counts.set(day, (counts.get(day) ?? 0) + 1);
+    } catch {}
+  }
+  return counts;
+}
+
 export interface CountryCount {
   code: string;
   code3: string;

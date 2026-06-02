@@ -13,16 +13,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const timeIncrement = searchParams.get("time_increment");
 
   if (!from || !to) {
     return NextResponse.json({ error: "from and to are required" }, { status: 400 });
   }
 
-  const url = buildInsightsUrl(env, from, to, {
+  const extra: Record<string, string> = {
     fields: FIELDS,
     level: "campaign",
     limit: "200",
-  });
+  };
+  if (timeIncrement) extra.time_increment = timeIncrement;
+  const url = buildInsightsUrl(env, from, to, extra);
   const result = await fetchAllInsights(url);
   if (!result.ok) {
     console.error("[meta/campaigns] error:", result.status, result.details);

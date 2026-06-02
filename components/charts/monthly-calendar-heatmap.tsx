@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Info, Star } from "lucide-react";
 import type { DayOfMonthBucket } from "@/lib/dashboard-aggregation";
 import { toPYTime } from "@/lib/date-filters";
 
@@ -15,6 +15,7 @@ interface MonthlyCalendarHeatmapProps {
   month: number;
   filterFrom?: string;
   filterTo?: string;
+  salesByDay?: Map<number, number>;
 }
 
 function getIntensityColor(count: number, max: number): string {
@@ -66,6 +67,7 @@ export function MonthlyCalendarHeatmap({
   month,
   filterFrom,
   filterTo,
+  salesByDay,
 }: MonthlyCalendarHeatmapProps) {
   const { byDay, maxCount, firstDayOffset, total } = useMemo(() => {
     const byDay = new Map<number, number>();
@@ -130,6 +132,7 @@ export function MonthlyCalendarHeatmap({
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1;
             const count = byDay.get(day) ?? 0;
+            const sales = salesByDay?.get(day) ?? 0;
             const inRange =
               activeRange != null &&
               day >= activeRange.startDay &&
@@ -138,14 +141,24 @@ export function MonthlyCalendarHeatmap({
             return (
               <div
                 key={day}
-                className={`aspect-square rounded-sm p-1 text-center text-[10px] transition-colors ${
+                className={`relative aspect-square rounded-sm p-1 text-center text-[10px] transition-colors ${
                   inRange ? "ring-1 ring-primary/50" : ""
                 } ${!inRange && activeRange != null ? "opacity-40" : ""}`}
                 style={{
                   backgroundColor: getIntensityColor(count, maxCount),
                 }}
-                title={`${day} ${monthName} - ${count} chats`}
+                title={`${day} ${monthName} - ${count} chats${sales > 0 ? ` · ${sales} venta${sales > 1 ? "s" : ""}` : ""}`}
               >
+                {sales > 0 && (
+                  <span className="absolute top-0.5 right-0.5 flex items-center gap-0.5">
+                    <Star className="size-2.5 fill-amber-400 text-amber-400" />
+                    {sales > 1 && (
+                      <span className="text-[8px] font-semibold text-amber-600 leading-none">
+                        {sales}
+                      </span>
+                    )}
+                  </span>
+                )}
                 <span className={count > 0 ? "font-medium text-foreground" : "text-muted-foreground"}>
                   {day}
                 </span>

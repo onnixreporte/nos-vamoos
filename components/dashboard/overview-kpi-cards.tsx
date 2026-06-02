@@ -9,7 +9,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration } from "@/lib/agent-aggregation";
 import type { OverviewKpis } from "@/lib/dashboard-aggregation";
-import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users, Timer, Activity } from "lucide-react";
+import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users, Timer, Activity, Bot } from "lucide-react";
 
 function InfoTip({ text }: { text: string }) {
   return (
@@ -35,7 +35,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
   });
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-8">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -131,6 +131,20 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
             {formatDuration(kpis.avgAttendingMs)}
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Bot className="size-3.5" />
+            T. prom. atención bot
+            <InfoTip text="Tiempo promedio que el bot atiende antes de derivar a un agente humano." />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-semibold tabular-nums">
+            {formatDuration(kpis.avgBotAttendingMs)}
           </p>
         </CardContent>
       </Card>

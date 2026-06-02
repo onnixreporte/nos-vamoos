@@ -42,7 +42,7 @@ export function ComparisonAreaChart({ data, labelA, labelB }: ComparisonAreaChar
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-          Conversaciones en el tiempo
+          Contactos en el tiempo
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="size-3.5 text-muted-foreground cursor-help" />

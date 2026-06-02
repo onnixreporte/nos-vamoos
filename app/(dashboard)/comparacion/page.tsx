@@ -278,7 +278,7 @@ export default function ComparacionPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <KpiCompareCard
               icon={<MessageSquare className="size-3.5" />}
-              title="Total conversaciones"
+              title="Total contactos"
               valueA={totalA.toLocaleString("es")}
               valueB={totalB.toLocaleString("es")}
               delta={{ value: deltaTotal }}

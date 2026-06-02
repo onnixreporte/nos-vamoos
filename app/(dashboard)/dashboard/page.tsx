@@ -18,6 +18,7 @@ import {
   countByChannel,
   countByCountry,
   countByDestination,
+  countSalesByDayOfMonth,
   groupByHourAndDay,
   groupChatsByDayOfMonth,
   groupConversationsByTime,
@@ -458,6 +459,16 @@ export default function DashboardPage() {
     [filteredChats, calendarYearMonth.year, calendarYearMonth.month, appliedFilter?.from, appliedFilter?.to],
   );
 
+  const salesByDay = useMemo(
+    () =>
+      countSalesByDayOfMonth(
+        filteredChats,
+        calendarYearMonth.year,
+        calendarYearMonth.month,
+      ),
+    [filteredChats, calendarYearMonth.year, calendarYearMonth.month],
+  );
+
   const countryCounts = useMemo(
     () => countByCountry(filteredChats),
     [filteredChats],
@@ -513,6 +524,7 @@ export default function DashboardPage() {
               month={calendarYearMonth.month}
               filterFrom={appliedFilter?.from}
               filterTo={appliedFilter?.to}
+              salesByDay={salesByDay}
             />
           </div>
           <CountryMapChart data={countryCounts} />
