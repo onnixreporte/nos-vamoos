@@ -1,6 +1,9 @@
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 const BOTMAKER_MESSAGES_URL = "https://api.botmaker.com/v2.0/messages";
 const ALLOWED_PARAMS = [
   "from",

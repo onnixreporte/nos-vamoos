@@ -2,6 +2,9 @@ import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { splitDateRange } from "@/lib/date-windows";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 const BOTMAKER_SESSIONS_URL = "https://api.botmaker.com/v2.0/sessions";
 
 const MAX_PAGES_PER_WINDOW = 200;

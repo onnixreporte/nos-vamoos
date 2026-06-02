@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildInsightsUrl, fetchAllInsights, readMetaEnv } from "@/lib/meta-server";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 const FIELDS =
   "campaign_id,campaign_name,objective,spend,impressions,clicks,ctr,cpc,actions";
 
