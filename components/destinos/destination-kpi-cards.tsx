@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { DestinationKpis } from "@/lib/destinations-aggregation";
-import { MapPin, CalendarDays, Users } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 
 interface DestinationKpiCardsProps {
   kpis: DestinationKpis;
@@ -15,7 +15,7 @@ interface DestinationKpiCardsProps {
 
 export function DestinationKpiCards({ kpis }: DestinationKpiCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -26,19 +26,6 @@ export function DestinationKpiCards({ kpis }: DestinationKpiCardsProps) {
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
             {kpis.uniqueDestinations}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-1">
-          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <CalendarDays className="size-3.5" />
-            Prom. dias de viaje
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-semibold tabular-nums">
-            {kpis.avgTripDays.toFixed(1)}
           </p>
         </CardContent>
       </Card>

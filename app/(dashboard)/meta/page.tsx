@@ -19,6 +19,7 @@ import { usePersistedFilter } from "@/hooks/use-persisted-filter";
 import type { DateFilter } from "@/lib/date-filters";
 import {
   aggregateCampaigns,
+  groupConversationsByDayFromInsights,
   groupSpendByDay,
   sumInsights,
 } from "@/lib/meta-aggregation";
@@ -166,6 +167,10 @@ export default function MetaPage() {
       ),
     [chats, debouncedFilter?.from, debouncedFilter?.to],
   );
+  const metaConversationsByDay = useMemo(
+    () => groupConversationsByDayFromInsights(filteredCampaignDaily),
+    [filteredCampaignDaily],
+  );
 
   return (
     <div className="min-w-0 space-y-6">
@@ -212,7 +217,9 @@ export default function MetaPage() {
           <MetaKpiCards totals={totals} />
           <div className="grid gap-4 md:grid-cols-2">
             <MetaSpendAreaChart data={spendByDay} />
-            {!isCampaignFiltered && <ConversationsAreaChart data={conversationsByDay} />}
+            <ConversationsAreaChart
+              data={isCampaignFiltered ? metaConversationsByDay : conversationsByDay}
+            />
           </div>
           <MetaTopCampaignsBarChart data={campaigns} />
         </>

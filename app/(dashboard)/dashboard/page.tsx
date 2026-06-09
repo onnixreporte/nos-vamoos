@@ -359,24 +359,27 @@ export default function DashboardPage() {
     const avgAttendingMs =
       attendingWeight > 0 ? attendingSum / attendingWeight : 0;
 
-    const chatSessionStartMap = new Map<string, string>();
+    const chatCreationMap = new Map<string, string>();
     for (const c of chats) {
       const id = c.chat?.chatId;
       if (!id) continue;
-      const start = c.lastSessionCreationTime ?? c.creationTime;
-      if (start) chatSessionStartMap.set(id, start);
+      if (c.creationTime) chatCreationMap.set(id, c.creationTime);
+    }
+    const firstAgentTakeByChat = new Map<string, number>();
+    for (const item of agentItems) {
+      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
+      if (!item.chatId || !item.sessionCreationTime) continue;
+      const t = new Date(item.sessionCreationTime).getTime();
+      const prev = firstAgentTakeByChat.get(item.chatId);
+      if (prev === undefined || t < prev) firstAgentTakeByChat.set(item.chatId, t);
     }
     const MAX_BOT_MS = 24 * 60 * 60 * 1000;
     let botSumMs = 0;
     let botCount = 0;
-    for (const item of agentItems) {
-      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
-      if (!item.chatId || !item.sessionCreationTime) continue;
-      const sessionStart = chatSessionStartMap.get(item.chatId);
-      if (!sessionStart) continue;
-      const diff =
-        new Date(item.sessionCreationTime).getTime() -
-        new Date(sessionStart).getTime();
+    for (const [chatId, agentTakeTime] of firstAgentTakeByChat) {
+      const startStr = chatCreationMap.get(chatId);
+      if (!startStr) continue;
+      const diff = agentTakeTime - new Date(startStr).getTime();
       if (diff > 0 && diff < MAX_BOT_MS) {
         botSumMs += diff;
         botCount += 1;

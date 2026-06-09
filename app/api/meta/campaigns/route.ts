@@ -5,7 +5,7 @@ export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const FIELDS =
-  "campaign_id,campaign_name,objective,spend,impressions,clicks,ctr,cpc,actions";
+  "campaign_id,campaign_name,objective,spend,impressions,reach,clicks,ctr,cpc,actions";
 
 export async function GET(request: NextRequest) {
   const env = readMetaEnv();

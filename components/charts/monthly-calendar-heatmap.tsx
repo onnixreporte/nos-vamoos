@@ -150,13 +150,10 @@ export function MonthlyCalendarHeatmap({
                 title={`${day} ${monthName} - ${count} chats${sales > 0 ? ` · ${sales} venta${sales > 1 ? "s" : ""}` : ""}`}
               >
                 {sales > 0 && (
-                  <span className="absolute top-0.5 right-0.5 flex items-center gap-0.5">
-                    <Star className="size-2.5 fill-amber-400 text-amber-400" />
-                    {sales > 1 && (
-                      <span className="text-[8px] font-semibold text-amber-600 leading-none">
-                        {sales}
-                      </span>
-                    )}
+                  <span className="absolute top-0.5 right-0.5 flex flex-wrap items-center justify-end gap-0.5 max-w-[80%]">
+                    {Array.from({ length: sales }).map((_, i) => (
+                      <Star key={i} className="size-3.5 fill-amber-400 text-amber-400" />
+                    ))}
                   </span>
                 )}
                 <span className={count > 0 ? "font-medium text-foreground" : "text-muted-foreground"}>

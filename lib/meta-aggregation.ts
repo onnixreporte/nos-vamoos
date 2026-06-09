@@ -81,6 +81,29 @@ export function groupSpendByDay(rows: MetaInsightsRow[]): SpendByDayBucket[] {
     }));
 }
 
+export interface ConversationsByDayBucket {
+  label: string;
+  count: number;
+}
+
+export function groupConversationsByDayFromInsights(
+  rows: MetaInsightsRow[],
+): ConversationsByDayBucket[] {
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const key = r.date_start ?? r.date_stop;
+    if (!key) continue;
+    const conv = getActionValue(r.actions, WHATSAPP_CONVO_ACTION_TYPES);
+    map.set(key, (map.get(key) ?? 0) + conv);
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, count]) => ({
+      label: date.slice(5),
+      count: Math.round(count),
+    }));
+}
+
 export interface CampaignBucket {
   campaignId: string;
   name: string;

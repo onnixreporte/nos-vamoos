@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { formatDuration } from "@/lib/agent-aggregation";
 import type { AgentSummary } from "@/types/botmaker";
-import { MessageSquare, Clock, Timer, Pause } from "lucide-react";
+import { MessageSquare, Clock, Timer } from "lucide-react";
 
 interface AgentKpiCardsProps {
   agents: AgentSummary[];
@@ -34,7 +34,6 @@ function weightedAvg(
 
 export function AgentKpiCards({ agents, avgFirstResponseMsOverride }: AgentKpiCardsProps) {
   const totalClosed = agents.reduce((s, a) => s + a.closedConversations, 0);
-  const totalOnHold = agents.reduce((s, a) => s + a.onHold, 0);
   const avgFirstResponseMs =
     avgFirstResponseMsOverride !== undefined
       ? avgFirstResponseMsOverride
@@ -50,7 +49,7 @@ export function AgentKpiCards({ agents, avgFirstResponseMsOverride }: AgentKpiCa
   );
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -86,17 +85,6 @@ export function AgentKpiCards({ agents, avgFirstResponseMsOverride }: AgentKpiCa
           <p className="text-2xl font-semibold tabular-nums">
             {formatDuration(avgAttendingMs)}
           </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-1">
-          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <Pause className="size-3.5" />
-            Conversaciones en espera
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-semibold tabular-nums">{totalOnHold}</p>
         </CardContent>
       </Card>
     </div>
