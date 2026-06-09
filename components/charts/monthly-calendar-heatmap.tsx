@@ -19,12 +19,12 @@ interface MonthlyCalendarHeatmapProps {
 }
 
 function getIntensityColor(count: number, max: number): string {
-  if (max === 0 || count === 0) return "hsl(var(--muted))";
+  if (max === 0 || count === 0) return "hsl(0 0% 96%)";
   const intensity = count / max;
-  if (intensity >= 0.75) return "hsl(12 76% 61% / 0.9)";
-  if (intensity >= 0.5) return "hsl(12 76% 61% / 0.65)";
-  if (intensity >= 0.25) return "hsl(12 76% 61% / 0.4)";
-  return "hsl(12 76% 61% / 0.2)";
+  if (intensity >= 0.75) return "hsl(0 0% 35%)";
+  if (intensity >= 0.5) return "hsl(0 0% 55%)";
+  if (intensity >= 0.25) return "hsl(0 0% 75%)";
+  return "hsl(0 0% 88%)";
 }
 
 function getActiveRange(
@@ -137,6 +137,13 @@ export function MonthlyCalendarHeatmap({
               activeRange != null &&
               day >= activeRange.startDay &&
               day <= activeRange.endDay;
+            const intensity = maxCount > 0 ? count / maxCount : 0;
+            const isDark = intensity >= 0.5;
+            const textColor = count === 0
+              ? "text-muted-foreground"
+              : isDark
+                ? "text-white"
+                : "text-foreground";
 
             return (
               <div
@@ -152,15 +159,15 @@ export function MonthlyCalendarHeatmap({
                 {sales > 0 && (
                   <span className="absolute top-0.5 right-0.5 flex flex-wrap items-center justify-end gap-0.5 max-w-[80%]">
                     {Array.from({ length: sales }).map((_, i) => (
-                      <Star key={i} className="size-3.5 fill-amber-400 text-amber-400" />
+                      <Star key={i} className="size-3.5 fill-amber-400 text-amber-400 drop-shadow" />
                     ))}
                   </span>
                 )}
-                <span className={count > 0 ? "font-medium text-foreground" : "text-muted-foreground"}>
+                <span className={count > 0 ? `font-medium ${textColor}` : textColor}>
                   {day}
                 </span>
                 {count > 0 && (
-                  <span className="block text-[9px] opacity-80">{count}</span>
+                  <span className={`block text-[9px] opacity-90 ${textColor}`}>{count}</span>
                 )}
               </div>
             );
