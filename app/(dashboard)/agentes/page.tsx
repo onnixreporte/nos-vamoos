@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { AgentKpiCards } from "@/components/agentes/agent-kpi-cards";
 import { AgentsTable } from "@/components/agentes/agents-table";
 import { DateFilterBar } from "@/components/filters/date-filter-bar";
 import { useRefreshContext } from "@/store/refresh-context";
 import { aggregateByAgent } from "@/lib/agent-aggregation";
-import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
+import { type DateFilter } from "@/lib/date-filters";
+import { usePersistedFilter } from "@/hooks/use-persisted-filter";
+import { getCachedPageData, setCachedPageData } from "@/lib/page-data-cache";
 import {
   buildAdditionalFilterOptions,
   buildTestTypificationChatIds,
@@ -54,16 +56,16 @@ export default function AgentesPage() {
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
-    buildPresetRange("week"),
-  );
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:agentes", "week");
   const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
-    () => buildPresetRange("week"),
+    appliedFilter,
   );
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const lastRefreshAgentsRef = useRef(0);
+  const lastRefreshMetricsRef = useRef(0);
 
   const { registerRefresh, unregisterRefresh } = useRefreshContext();
   useEffect(() => {
@@ -80,6 +82,19 @@ export default function AgentesPage() {
     const MAX_PAGES = 200;
     (async () => {
       try {
+        // Lista de agentes es estática: cache en memoria salvo refresh manual
+        const isRefresh = lastRefreshAgentsRef.current !== refreshTrigger && refreshTrigger > 0;
+        lastRefreshAgentsRef.current = refreshTrigger;
+
+        if (!isRefresh) {
+          const cached = getCachedPageData<AgentListItem[]>("agentes:list", "", "");
+          if (cached) {
+            setAgentsList(cached);
+            setLoadingAgents(false);
+            return;
+          }
+        }
+
         let url: string | null = "/api/agents";
         const acc: AgentListItem[] = [];
         let pageCount = 0;
@@ -95,7 +110,10 @@ export default function AgentesPage() {
               ? `/api/agents?nextPage=${encodeURIComponent(page.nextPage)}`
               : null;
         }
-        if (!cancelled) setAgentsList(acc);
+        if (!cancelled) {
+          setCachedPageData("agentes:list", "", "", undefined, acc);
+          setAgentsList(acc);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -159,11 +177,30 @@ export default function AgentesPage() {
 
     (async () => {
       try {
-        const openItems = await fetchAllPages("open");
+        const isRefresh = lastRefreshMetricsRef.current !== refreshTrigger && refreshTrigger > 0;
+        lastRefreshMetricsRef.current = refreshTrigger;
+
+        if (!isRefresh) {
+          const cached = getCachedPageData<AgentMetricsItem[]>(
+            "agentes",
+            debouncedFilter.from,
+            debouncedFilter.to,
+          );
+          if (cached) {
+            setRawItems(cached);
+            setLoadingMetrics(false);
+            return;
+          }
+        }
+
+        const [openItems, closedItems] = await Promise.all([
+          fetchAllPages("open"),
+          fetchAllPages("closed"),
+        ]);
         if (cancelled) return;
-        const closedItems = await fetchAllPages("closed");
-        if (cancelled) return;
-        setRawItems([...closedItems, ...openItems]);
+        const allItems = [...closedItems, ...openItems];
+        setCachedPageData("agentes", debouncedFilter.from, debouncedFilter.to, undefined, allItems);
+        setRawItems(allItems);
       } catch (err) {
         if (!cancelled) {
           setError(

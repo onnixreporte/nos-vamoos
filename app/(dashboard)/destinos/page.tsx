@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { DestinationKpiCards } from "@/components/destinos/destination-kpi-cards";
 import { DestinationsTable } from "@/components/destinos/destinations-table";
@@ -19,7 +19,8 @@ import {
   familyComposition,
   tripDurationDistribution,
 } from "@/lib/destinations-aggregation";
-import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
+import { usePersistedFilter } from "@/hooks/use-persisted-filter";
+import { getCachedPageData, setCachedPageData } from "@/lib/page-data-cache";
 import {
   buildAdditionalFilterOptions,
   chatMatchesAdditionalFilters,
@@ -36,13 +37,12 @@ export default function DestinosPage() {
   const [chats, setChats] = useState<ChatWithMessagesResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [appliedFilter, setAppliedFilter] = useState<DateFilter | null>(() =>
-    buildPresetRange("week"),
-  );
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:destinos", "week");
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const lastRefreshRef = useRef(0);
 
   const { registerRefresh, unregisterRefresh } = useRefreshContext();
   useEffect(() => {
@@ -92,9 +92,28 @@ export default function DestinosPage() {
 
     (async () => {
       try {
+        // Check cache first (skip on manual refresh)
+        const isRefresh = lastRefreshRef.current !== refreshTrigger && refreshTrigger > 0;
+        lastRefreshRef.current = refreshTrigger;
+
+        if (!isRefresh) {
+          const cached = getCachedPageData<ChatWithMessagesResponse[]>(
+            "destinos",
+            appliedFilter.from,
+            appliedFilter.to,
+            appliedFilter.longTerm,
+          );
+          if (cached) {
+            setChats(cached);
+            setLoading(false);
+            return;
+          }
+        }
+
         const chatList = await fetchAllChats();
         if (cancelled) return;
         const nonTestChats = chatList.filter((chat) => !isTestChat(chat));
+        setCachedPageData("destinos", appliedFilter.from, appliedFilter.to, appliedFilter.longTerm, nonTestChats);
         setChats(nonTestChats);
       } catch (err) {
         if (!cancelled) {

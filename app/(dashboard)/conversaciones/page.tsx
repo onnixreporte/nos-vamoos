@@ -357,11 +357,24 @@ export default function ConversacionesPage() {
 
     (async () => {
       try {
-        for (const chatId of missingChatIds) {
+        // Lotes de 5 en paralelo: con cientos de chats el loop serial tardaba minutos
+        const CONCURRENCY = 5;
+        for (let i = 0; i < missingChatIds.length; i += CONCURRENCY) {
           if (cancelled) return;
-          const count = await fetchBotMessagesCount(chatId, controller.signal);
+          const batch = missingChatIds.slice(i, i + CONCURRENCY);
+          const counts = await Promise.all(
+            batch.map((chatId) =>
+              fetchBotMessagesCount(chatId, controller.signal),
+            ),
+          );
           if (cancelled) return;
-          setBotMessagesByChatId((prev) => ({ ...prev, [chatId]: count }));
+          setBotMessagesByChatId((prev) => {
+            const next = { ...prev };
+            batch.forEach((chatId, idx) => {
+              next[chatId] = counts[idx];
+            });
+            return next;
+          });
         }
       } catch (err) {
         // AbortError is expected when the filter changes or component unmounts

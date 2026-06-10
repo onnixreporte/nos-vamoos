@@ -9,9 +9,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DollarSign,
-  Eye,
   Info,
-  MousePointerClick,
+  MessageCircle,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -81,18 +80,12 @@ function Kpi({
 
 export function MetaKpiCards({ totals }: MetaKpiCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       <Kpi
         icon={<DollarSign className="size-3.5" />}
         title="Gasto total"
         tip="Inversión total en anuncios Meta durante el rango filtrado."
         value={fmtMoney(totals.spend)}
-      />
-      <Kpi
-        icon={<Eye className="size-3.5" />}
-        title="Impresiones"
-        tip="Veces que los anuncios fueron mostrados."
-        value={fmtInt(totals.impressions)}
       />
       <Kpi
         icon={<Users className="size-3.5" />}
@@ -101,16 +94,16 @@ export function MetaKpiCards({ totals }: MetaKpiCardsProps) {
         value={fmtInt(totals.reach)}
       />
       <Kpi
-        icon={<MousePointerClick className="size-3.5" />}
-        title="Clicks"
-        tip="Total de clicks en los anuncios."
-        value={fmtInt(totals.clicks)}
+        icon={<MessageCircle className="size-3.5" />}
+        title="Conversaciones iniciadas"
+        tip="Conversaciones de WhatsApp iniciadas desde anuncios (acciones de mensajería de Meta)."
+        value={fmtInt(totals.conversations)}
       />
       <Kpi
         icon={<TrendingUp className="size-3.5" />}
-        title="CPC"
-        tip="Costo promedio por click."
-        value={fmtMoney2(totals.cpc)}
+        title="Costo por conversación"
+        tip="Gasto total dividido por conversaciones iniciadas."
+        value={fmtMoney2(totals.costPerConversation)}
       />
     </div>
   );

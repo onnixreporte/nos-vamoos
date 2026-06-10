@@ -182,11 +182,11 @@ export default function VentasPage() {
           }
         }
 
-        const chatList = await fetchAllChats();
-        if (cancelled) return;
-        const openItems = await fetchAllAgentMetrics("open");
-        if (cancelled) return;
-        const closedItems = await fetchAllAgentMetrics("closed");
+        const [chatList, openItems, closedItems] = await Promise.all([
+          fetchAllChats(),
+          fetchAllAgentMetrics("open"),
+          fetchAllAgentMetrics("closed"),
+        ]);
         if (cancelled) return;
         const allAgentItems = [...closedItems, ...openItems];
 
