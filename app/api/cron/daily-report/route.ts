@@ -125,9 +125,11 @@ export async function GET(request: NextRequest) {
         ruleNameOrId: templateName,
         clientPayload: `reporte-diario-${dateKey}`,
         params: {
-          // Documento dinámico del header
+          // Documento dinámico del header (convención genérica Botmaker)
           headerDocumentUrl: pdfUrl,
           headerDocumentCaption: `Reporte diario ${dateKey}.pdf`,
+          // Variable del campo Documento si la plantilla la referencia así
+          reporte_diario: pdfUrl,
           // Variable {{1}} del body — debe llamarse "fecha" en la plantilla
           fecha: data.dateLabel,
         },
