@@ -9,6 +9,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import type { OriginCount } from "@/lib/destinations-aggregation";
+import { normalizeOrigin } from "@/lib/dashboard-aggregation";
 
 interface TravelerOriginBarChartProps {
   data: OriginCount[];
@@ -20,14 +21,6 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 const ALLOWED_ORIGINS = new Set(["organico", "organica", "organic", "pauta", "pautas"]);
-
-function normalizeOrigin(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
 
 export function TravelerOriginBarChart({ data }: TravelerOriginBarChartProps) {
   const chartData = data

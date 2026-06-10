@@ -9,7 +9,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration } from "@/lib/agent-aggregation";
 import type { OverviewKpis } from "@/lib/dashboard-aggregation";
-import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users, Timer, Activity } from "lucide-react";
+import { MessageSquare, DollarSign, CheckCircle, Clock, Info, Users, Timer, Activity, Megaphone } from "lucide-react";
 
 function InfoTip({ text }: { text: string }) {
   return (
@@ -28,14 +28,15 @@ interface OverviewKpiCardsProps {
   kpis: OverviewKpis;
 }
 
-export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
-  const formattedAmount = kpis.totalSalesAmount.toLocaleString("es", {
+const fmtAmount = (n: number) =>
+  n.toLocaleString("es", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
 
+export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 leading-tight">
@@ -82,13 +83,27 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         <CardHeader className="pb-1">
           <CardTitle className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 leading-tight">
             <DollarSign className="size-3.5" />
-            Monto total ventas
-            <InfoTip text="Suma de monto_venta de chats con venta cargada." />
+            Ventas orgánicas
+            <InfoTip text="Monto de ventas de chats sin origen de pauta (variable origen distinta de 'pauta' o sin cargar)." />
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-lg font-semibold tabular-nums">
-            {formattedAmount}
+            {fmtAmount(kpis.organicSalesAmount)}
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 leading-tight">
+            <Megaphone className="size-3.5" />
+            Ventas por Ads
+            <InfoTip text="Monto de ventas de chats que llegaron desde anuncios (variable origen = 'pauta')." />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-lg font-semibold tabular-nums">
+            {fmtAmount(kpis.adsSalesAmount)}
           </p>
         </CardContent>
       </Card>

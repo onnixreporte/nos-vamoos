@@ -23,10 +23,7 @@ import {
   groupSpendByDay,
   sumInsights,
 } from "@/lib/meta-aggregation";
-import { groupConversationsByTime } from "@/lib/dashboard-aggregation";
-import { fetchAllChatsWithGapFill } from "@/lib/chats-client";
 import type { MetaInsightsRow } from "@/lib/meta-types";
-import type { ChatWithMessagesResponse } from "@/types/botmaker";
 
 interface MetaPayload {
   data: MetaInsightsRow[];
@@ -55,7 +52,6 @@ export default function MetaPage() {
   const [dailyRows, setDailyRows] = useState<MetaInsightsRow[]>([]);
   const [campaignRows, setCampaignRows] = useState<MetaInsightsRow[]>([]);
   const [campaignDailyRows, setCampaignDailyRows] = useState<MetaInsightsRow[]>([]);
-  const [chats, setChats] = useState<ChatWithMessagesResponse[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("__all__");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +73,6 @@ export default function MetaPage() {
       setAccountRows([]);
       setDailyRows([]);
       setCampaignRows([]);
-      setChats([]);
       setLoading(false);
       setError(null);
       return;
@@ -99,19 +94,17 @@ export default function MetaPage() {
 
     (async () => {
       try {
-        const [account, daily, campaigns, campaignDaily, chatList] = await Promise.all([
+        const [account, daily, campaigns, campaignDaily] = await Promise.all([
           fetchJson<MetaPayload>(`/api/meta/insights${base}`, controller.signal),
           fetchJson<MetaPayload>(`/api/meta/insights?${dailyQs.toString()}`, controller.signal),
           fetchJson<MetaPayload>(`/api/meta/campaigns${base}`, controller.signal),
           fetchJson<MetaPayload>(`/api/meta/campaigns?${campaignDailyQs.toString()}`, controller.signal),
-          fetchAllChatsWithGapFill(debouncedFilter, controller.signal),
         ]);
         if (cancelled) return;
         setAccountRows(account.data ?? []);
         setDailyRows(daily.data ?? []);
         setCampaignRows(campaigns.data ?? []);
         setCampaignDailyRows(campaignDaily.data ?? []);
-        setChats(chatList);
       } catch (err) {
         if (cancelled) return;
         if ((err as Error).name === "AbortError") return;
@@ -156,20 +149,14 @@ export default function MetaPage() {
     [filteredCampaignRows],
   );
   const allCampaigns = useMemo(() => aggregateCampaigns(campaignRows), [campaignRows]);
-  const conversationsByDay = useMemo(
-    () =>
-      groupConversationsByTime(
-        chats,
-        "day",
-        false,
-        debouncedFilter?.from,
-        debouncedFilter?.to,
-      ),
-    [chats, debouncedFilter?.from, debouncedFilter?.to],
-  );
+  // Misma fuente (insights Meta) con y sin filtro de campaña, para que el
+  // chart siempre sea coherente con la card "Conversaciones iniciadas"
   const metaConversationsByDay = useMemo(
-    () => groupConversationsByDayFromInsights(filteredCampaignDaily),
-    [filteredCampaignDaily],
+    () =>
+      groupConversationsByDayFromInsights(
+        isCampaignFiltered ? filteredCampaignDaily : dailyRows,
+      ),
+    [isCampaignFiltered, filteredCampaignDaily, dailyRows],
   );
 
   return (
@@ -218,7 +205,9 @@ export default function MetaPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <MetaSpendAreaChart data={spendByDay} />
             <ConversationsAreaChart
-              data={isCampaignFiltered ? metaConversationsByDay : conversationsByDay}
+              data={metaConversationsByDay}
+              title="Conversaciones iniciadas por día"
+              tooltip="Conversaciones de WhatsApp iniciadas atribuidas a anuncios, día a día (métrica de Meta, ventana de atribución de 7 días). No equivale a chats únicos de Botmaker."
             />
           </div>
           <MetaTopCampaignsBarChart data={campaigns} />

@@ -20,6 +20,8 @@ import type { TimeBucket } from "@/lib/dashboard-aggregation";
 
 interface ConversationsAreaChartProps {
   data: TimeBucket[];
+  title?: string;
+  tooltip?: string;
 }
 
 const chartConfig = {
@@ -29,7 +31,11 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ConversationsAreaChart({ data }: ConversationsAreaChartProps) {
+export function ConversationsAreaChart({
+  data,
+  title = "Conversaciones en el tiempo",
+  tooltip = "Volumen de chats agrupados por día u hora dentro del rango filtrado.",
+}: ConversationsAreaChartProps) {
   const chartData = data.map((d) => ({ label: d.label, count: d.count }));
   const total = chartData.reduce((s, d) => s + d.count, 0);
 
@@ -37,13 +43,13 @@ export function ConversationsAreaChart({ data }: ConversationsAreaChartProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-          Conversaciones en el tiempo
+          {title}
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="size-3.5 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
-              <p className="max-w-xs">Volumen de chats agrupados por día u hora dentro del rango filtrado.</p>
+              <p className="max-w-xs">{tooltip}</p>
             </TooltipContent>
           </Tooltip>
         </CardTitle>

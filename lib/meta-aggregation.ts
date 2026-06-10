@@ -1,9 +1,9 @@
 import type { MetaInsightsRow, MetaAction } from "@/lib/meta-types";
 
+// Solo "conversation started": sumar también first_reply y total_messaging_connection
+// triplica el conteo (son eventos solapados del mismo chat).
 export const WHATSAPP_CONVO_ACTION_TYPES = [
   "onsite_conversion.messaging_conversation_started_7d",
-  "onsite_conversion.messaging_first_reply",
-  "onsite_conversion.total_messaging_connection",
 ];
 
 export function parseNum(s: string | undefined): number {

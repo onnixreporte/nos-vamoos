@@ -96,7 +96,7 @@ export function MetaKpiCards({ totals }: MetaKpiCardsProps) {
       <Kpi
         icon={<MessageCircle className="size-3.5" />}
         title="Conversaciones iniciadas"
-        tip="Conversaciones de WhatsApp iniciadas desde anuncios (acciones de mensajería de Meta)."
+        tip="Eventos de conversación de WhatsApp iniciada atribuidos a anuncios (métrica de Meta, ventana de 7 días). Una misma persona puede contar más de una vez si reinicia conversación tras 7+ días de inactividad; no equivale a chats únicos de Botmaker."
         value={fmtInt(totals.conversations)}
       />
       <Kpi

@@ -7,6 +7,10 @@ import { countryFromPhone } from "@/lib/phone-country";
 export interface OverviewKpis {
   totalConversations: number;
   totalSalesAmount: number;
+  /** Monto de ventas de chats con variables.origen = pauta. */
+  adsSalesAmount: number;
+  /** Monto de ventas del resto (origen distinto de pauta o sin cargar). */
+  organicSalesAmount: number;
   closedConversations: number;
   avgFirstResponseMs: number;
   avgAttendingMs: number;
@@ -20,6 +24,23 @@ function parseNum(s: string | undefined): number {
   if (s == null || s === "") return 0;
   const n = Number(String(s).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Quita acentos, espacios y mayúsculas para comparar valores de `origen`. */
+export function normalizeOrigin(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+const ADS_ORIGINS = new Set(["pauta", "pautas"]);
+
+/** Chat proveniente de un anuncio según la variable `origen` cargada en Botmaker. */
+export function isAdsOrigin(chat: ChatWithMessagesResponse): boolean {
+  const origin = chat.variables?.origen;
+  return origin != null && ADS_ORIGINS.has(normalizeOrigin(origin));
 }
 
 /**
@@ -37,12 +58,16 @@ export function computeOverviewKpis(
   const totalConversations = uniqueUserIds.size;
 
   let totalSalesAmount = 0;
+  let adsSalesAmount = 0;
   for (const chat of chats) {
     const val = chat.variables?.monto_venta;
     if (val != null && val !== "") {
-      totalSalesAmount += parseNum(val);
+      const amount = parseNum(val);
+      totalSalesAmount += amount;
+      if (isAdsOrigin(chat)) adsSalesAmount += amount;
     }
   }
+  const organicSalesAmount = totalSalesAmount - adsSalesAmount;
 
   const closedConversationIds = new Set<string>();
   let firstResponseSumMs = 0;
@@ -75,6 +100,8 @@ export function computeOverviewKpis(
   return {
     totalConversations,
     totalSalesAmount,
+    adsSalesAmount,
+    organicSalesAmount,
     closedConversations: closedConversationIds.size,
     avgFirstResponseMs,
     avgAttendingMs: 0,
