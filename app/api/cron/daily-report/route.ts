@@ -11,9 +11,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { buildDailyReportData } from "@/lib/report/report-data";
 import { renderDailyReportPdf } from "@/lib/report/pdf-template";
-import { BOTMAKER_NOTIFICATIONS_URL } from "@/lib/botmaker-server";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { isoToPYDate } from "@/lib/meta-server";
+
+// v1.0 intent: único endpoint que soporta header multimedia dinámico
+// (headerDocumentUrl); el v2.0 /notifications ignora la media y manda el
+// documento de muestra de la plantilla.
+const BOTMAKER_INTENT_URL = "https://go.botmaker.com/api/v1.0/intent/v2";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -97,8 +101,14 @@ export async function GET(request: NextRequest) {
       console.log("[daily-report] Sin Blob: usando PDF on-demand:", pdfUrl);
     }
 
-    // 4. Enviar notificación por plantilla de WhatsApp vía Botmaker
-    const notificationRes = await fetchWithRetry(BOTMAKER_NOTIFICATIONS_URL, {
+    // 4. Enviar plantilla de WhatsApp vía Botmaker (v1.0 intent)
+    // REPORT_CHANNEL_ID puede ser el id completo (negocio-whatsapp-numero)
+    // o directamente el número del canal
+    const chatChannelNumber = (channelId as string).includes("-whatsapp-")
+      ? (channelId as string).split("-whatsapp-")[1]
+      : (channelId as string);
+
+    const notificationRes = await fetchWithRetry(BOTMAKER_INTENT_URL, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -109,23 +119,18 @@ export async function GET(request: NextRequest) {
       // 1 solo retry: un reintento sobre un POST ya procesado duplicaría el envío
       maxRetries: 1,
       body: JSON.stringify({
-        channelId,
-        name: `reporte-diario-${dateKey}`,
-        intentIdOrName: templateName,
-        contacts: [
-          {
-            contactId,
-            variables: {
-              // Variable del documento del header (así se llama en la plantilla)
-              reporte_diario: pdfUrl,
-              // Convención genérica Botmaker para header multimedia (fallback)
-              headerDocumentUrl: pdfUrl,
-              headerDocumentCaption: `Reporte diario ${dateKey}.pdf`,
-              // Variable {{1}} del body — debe llamarse "fecha" en la plantilla
-              fecha: data.dateLabel,
-            },
-          },
-        ],
+        chatPlatform: "whatsapp",
+        chatChannelNumber,
+        platformContactId: contactId,
+        ruleNameOrId: templateName,
+        clientPayload: `reporte-diario-${dateKey}`,
+        params: {
+          // Documento dinámico del header
+          headerDocumentUrl: pdfUrl,
+          headerDocumentCaption: `Reporte diario ${dateKey}.pdf`,
+          // Variable {{1}} del body — debe llamarse "fecha" en la plantilla
+          fecha: data.dateLabel,
+        },
       }),
     });
 
