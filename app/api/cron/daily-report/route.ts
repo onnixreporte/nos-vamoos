@@ -1,22 +1,20 @@
 /**
  * Cron del reporte diario (Vercel Cron, 8:00 AM Paraguay = 11:00 UTC).
  *
- * Flujo: datos del día anterior → PDF → Vercel Blob (URL pública) →
- * notificación WhatsApp vía plantilla de Botmaker (POST /v2.0/notifications).
+ * Envía la plantilla de WhatsApp del reporte diario vía Botmaker. La plantilla
+ * tiene un botón "Ver" que dispara un flujo del bot con el link fijo
+ * /reporte?key=REPORT_PUBLIC_KEY (la página siempre muestra los datos de ayer),
+ * así que acá no se genera ni adjunta nada.
  *
- * Env requeridas: CRON_SECRET, REPORT_CHANNEL_ID, REPORT_TEMPLATE_NAME,
- * REPORT_CONTACT_ID, BLOB_READ_WRITE_TOKEN (+ las de Botmaker/Meta).
+ * Env requeridas: CRON_SECRET, BOTMAKER_ACCESS_TOKEN, REPORT_CHANNEL_ID,
+ * REPORT_TEMPLATE_NAME, REPORT_CONTACT_ID.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
-import { buildDailyReportData } from "@/lib/report/report-data";
-import { renderDailyReportPdf } from "@/lib/report/pdf-template";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import { buildPresetRange } from "@/lib/date-filters";
 import { isoToPYDate } from "@/lib/meta-server";
 
-// v1.0 intent: único endpoint que soporta header multimedia dinámico
-// (headerDocumentUrl); el v2.0 /notifications ignora la media y manda el
-// documento de muestra de la plantilla.
+// v1.0 intent: dispara plantillas/intenciones con params de variables
 const BOTMAKER_INTENT_URL = "https://go.botmaker.com/api/v1.0/intent/v2";
 
 export const maxDuration = 60;
@@ -34,9 +32,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ?dry-run=1: genera y devuelve el PDF sin subir a Blob ni notificar (debug)
-  const dryRun = new URL(request.url).searchParams.get("dry-run") === "1";
-
   const botmakerToken = process.env.BOTMAKER_ACCESS_TOKEN;
   const channelId = process.env.REPORT_CHANNEL_ID;
   const templateName = process.env.REPORT_TEMPLATE_NAME;
@@ -47,61 +42,29 @@ export async function GET(request: NextRequest) {
     !templateName && "REPORT_TEMPLATE_NAME",
     !contactId && "REPORT_CONTACT_ID",
   ].filter(Boolean);
-  if (!dryRun && missing.length > 0) {
+  if (missing.length > 0) {
     return NextResponse.json(
       { error: `Missing env vars: ${missing.join(", ")}` },
       { status: 500 },
     );
   }
 
+  // Fecha del día reportado (ayer, hora Paraguay) para la variable del body
+  const range = buildPresetRange("yesterday");
+  const dateKey = isoToPYDate(range.from); // YYYY-MM-DD
+  const dateLabel = new Date(range.from).toLocaleDateString("es-PY", {
+    timeZone: "America/Asuncion",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  // ?dry-run=1: valida envs y fechas sin enviar el mensaje (debug)
+  if (new URL(request.url).searchParams.get("dry-run") === "1") {
+    return NextResponse.json({ ok: true, dryRun: true, date: dateKey, dateLabel });
+  }
+
   try {
-    // 1. Datos del día anterior (mismos cómputos que el dashboard)
-    const data = await buildDailyReportData();
-    const dateKey = isoToPYDate(data.fromIso); // YYYY-MM-DD del día reportado
-
-    // 2. Render del PDF
-    const pdfBuffer = await renderDailyReportPdf(data);
-
-    if (dryRun) {
-      return new NextResponse(new Uint8Array(pdfBuffer), {
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `inline; filename="reporte-${dateKey}.pdf"`,
-        },
-      });
-    }
-
-    // 3. URL pública del PDF: Vercel Blob si está configurado; si no,
-    //    fallback a la ruta on-demand /api/report/pdf (regenera al descargar)
-    let pdfUrl: string;
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const blob = await put(`reports/reporte-${dateKey}.pdf`, pdfBuffer, {
-        access: "public",
-        contentType: "application/pdf",
-        addRandomSuffix: false,
-        allowOverwrite: true,
-      });
-      pdfUrl = blob.url;
-      console.log("[daily-report] PDF subido a Blob:", pdfUrl);
-    } else {
-      const publicKey = process.env.REPORT_PUBLIC_KEY;
-      if (!publicKey) {
-        return NextResponse.json(
-          {
-            error:
-              "Set BLOB_READ_WRITE_TOKEN (Vercel Blob) or REPORT_PUBLIC_KEY (on-demand PDF fallback)",
-          },
-          { status: 500 },
-        );
-      }
-      const base = process.env.VERCEL_PROJECT_PRODUCTION_URL
-        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-        : new URL(request.url).origin;
-      pdfUrl = `${base}/api/report/pdf?date=${dateKey}&key=${publicKey}`;
-      console.log("[daily-report] Sin Blob: usando PDF on-demand:", pdfUrl);
-    }
-
-    // 4. Enviar plantilla de WhatsApp vía Botmaker (v1.0 intent)
     // REPORT_CHANNEL_ID puede ser el id completo (negocio-whatsapp-numero)
     // o directamente el número del canal
     const chatChannelNumber = (channelId as string).includes("-whatsapp-")
@@ -125,13 +88,8 @@ export async function GET(request: NextRequest) {
         ruleNameOrId: templateName,
         clientPayload: `reporte-diario-${dateKey}`,
         params: {
-          // Documento dinámico del header (convención genérica Botmaker)
-          headerDocumentUrl: pdfUrl,
-          headerDocumentCaption: `Reporte diario ${dateKey}.pdf`,
-          // Variable del campo Documento si la plantilla la referencia así
-          reporte_diario: pdfUrl,
-          // Variable {{1}} del body — debe llamarse "fecha" en la plantilla
-          fecha: data.dateLabel,
+          // Variable {{1}} del body si la plantilla la usa
+          fecha: dateLabel,
         },
       }),
     });
@@ -143,12 +101,9 @@ export async function GET(request: NextRequest) {
         notificationRes.status,
         details,
       );
-      // El PDF ya quedó generado y subido — reportar el fallo del envío
       return NextResponse.json(
         {
           ok: false,
-          step: "notification",
-          pdfUrl,
           error: `Botmaker API error: ${notificationRes.status}`,
           details,
         },
@@ -159,17 +114,12 @@ export async function GET(request: NextRequest) {
     const notification = await notificationRes.json().catch(() => null);
     console.log("[daily-report] Notificación enviada:", notification);
 
-    return NextResponse.json({
-      ok: true,
-      date: dateKey,
-      pdfUrl,
-      notification,
-    });
+    return NextResponse.json({ ok: true, date: dateKey, notification });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[daily-report] Error:", err);
     return NextResponse.json(
-      { ok: false, error: "Failed to generate daily report", details: message },
+      { ok: false, error: "Failed to send daily report", details: message },
       { status: 502 },
     );
   }
