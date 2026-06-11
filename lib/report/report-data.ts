@@ -20,6 +20,8 @@ import {
   buildTestTypificationChatIds,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
+import { isChatInRange } from "@/lib/chats-client";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import { aggregateByAgent } from "@/lib/agent-aggregation";
 import {
   computeSalesKpis,
@@ -63,6 +65,36 @@ function parseNum(s: string | undefined): number {
   if (s == null || s === "") return 0;
   const n = Number(String(s).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Gap-fill server-side: trae chats por id directo de Botmaker (lotes de 5). */
+async function fetchChatsByIds(
+  chatIds: string[],
+  token: string,
+): Promise<ChatWithMessagesResponse[]> {
+  const CONCURRENCY = 5;
+  const results: ChatWithMessagesResponse[] = [];
+  for (let i = 0; i < chatIds.length; i += CONCURRENCY) {
+    const batch = chatIds.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(async (chatId) => {
+        const res = await fetchWithRetry(
+          `https://api.botmaker.com/v2.0/chats/${chatId}`,
+          {
+            method: "GET",
+            headers: { Accept: "application/json", "access-token": token },
+            timeoutMs: 30_000,
+          },
+        );
+        if (!res.ok) return null;
+        return (await res.json()) as ChatWithMessagesResponse;
+      }),
+    );
+    for (const r of settled) {
+      if (r.status === "fulfilled" && r.value) results.push(r.value);
+    }
+  }
+  return results;
 }
 
 /** Día completo (00:00–23:59 Paraguay) para una fecha YYYY-MM-DD. */
@@ -171,10 +203,28 @@ export async function buildDailyReportData(
     return true;
   }).length;
 
-  // Mismos filtros que filteredChats de /dashboard y /ventas
+  // Mismo pipeline que fetchAllChatsWithGapFill + filteredChats de /dashboard:
+  // gap-fill de chats presentes en agent-metrics pero ausentes del listado,
+  // exclusión de test contacts/tipificaciones y recorte estricto por rango
+  // (long-term-search devuelve chats con actividad fuera del rango pedido)
+  const existingIds = new Set(chats.map((c) => c.chat.chatId));
+  const missingIds = [
+    ...new Set(
+      agentItems.map((i) => i.chatId).filter((id): id is string => !!id),
+    ),
+  ].filter((id) => !existingIds.has(id));
+
+  let finalChats = chats.filter((c) => !isTestChat(c));
+  if (missingIds.length > 0) {
+    const extra = await fetchChatsByIds(missingIds, token);
+    finalChats = [...finalChats, ...extra.filter((c) => !isTestChat(c))];
+  }
+
   const testTypificationChatIds = buildTestTypificationChatIds(agentItems);
-  const filteredChats = chats.filter(
-    (c) => !isTestChat(c) && !testTypificationChatIds.has(c.chat.chatId),
+  const filteredChats = finalChats.filter(
+    (c) =>
+      !testTypificationChatIds.has(c.chat.chatId) &&
+      isChatInRange(c, range.from, range.to),
   );
 
   // Atendidas/cerradas desde agentItems crudos excluyendo agentes de sistema

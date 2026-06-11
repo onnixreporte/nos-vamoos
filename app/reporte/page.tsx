@@ -40,8 +40,6 @@ async function getReportData(date?: string): Promise<DailyReportData> {
 }
 
 const fmtInt = (n: number) => n.toLocaleString("es");
-const fmtGs = (n: number) =>
-  n.toLocaleString("es", { maximumFractionDigits: 0 });
 const fmtUsd = (n: number) =>
   n.toLocaleString("es", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (n: number) =>
@@ -187,13 +185,13 @@ export default async function ReportePage({
             style={{ borderColor: BRAND }}
           >
             <p className="text-xs font-medium text-neutral-500">
-              Monto total (Gs)
+              Monto total (USD)
             </p>
             <p
               className="mt-1.5 text-3xl font-bold tabular-nums tracking-tight"
               style={{ color: BRAND }}
             >
-              {fmtGs(data.totalSalesAmount)}
+              $ {fmtUsd(data.totalSalesAmount)}
             </p>
           </div>
           <Stat label="Ventas cerradas" value={fmtInt(data.totalSales)} />
@@ -223,7 +221,7 @@ export default async function ReportePage({
                     {a.agentName}
                   </span>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">
-                    Gs {fmtGs(a.totalAmount)}
+                    $ {fmtUsd(a.totalAmount)}
                   </span>
                   <span className="shrink-0 text-xs text-neutral-400">
                     {fmtInt(a.salesCount)} {a.salesCount === 1 ? "venta" : "ventas"}
