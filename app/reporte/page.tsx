@@ -11,20 +11,12 @@
  * viaja por WhatsApp.
  */
 import type { Metadata } from "next";
-import { Fraunces } from "next/font/google";
 import { notFound } from "next/navigation";
 import { formatDuration } from "@/lib/agent-aggregation";
 import {
   buildDailyReportData,
   type DailyReportData,
 } from "@/lib/report/report-data";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-fraunces",
-});
 
 export const dynamic = "force-dynamic";
 
@@ -55,12 +47,6 @@ const fmtUsd = (n: number) =>
 const fmtPct = (n: number) =>
   `${n.toLocaleString("es", { maximumFractionDigits: 1 })}%`;
 
-/* ————— Identidad ————— */
-
-const INK = "#211d1f"; // negro cálido
-const STONE = "#8a8689"; // gris del logo, apenas oscurecido para contraste
-const HAIR = "#e9e4e0"; // hairlines
-const PAPER = "#fbf9f7"; // papel cálido
 const BRAND = "#e81f76"; // magenta NosVamoos
 
 /** Wordmark NosVamoos (mismos paths que components/ui/Logo, sin lógica de sidebar). */
@@ -85,75 +71,35 @@ function Wordmark({ className }: { className?: string }) {
   );
 }
 
-/* ————— Piezas editoriales ————— */
-
-function SectionHeader({ index, title }: { index: string; title: string }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-12 flex items-baseline gap-3">
-      <span
-        className={`${fraunces.className} text-xs italic`}
-        style={{ color: BRAND }}
-      >
-        {index}
-      </span>
-      <h2
-        className="text-[11px] font-semibold uppercase tracking-[0.22em]"
-        style={{ color: INK }}
-      >
-        {title}
-      </h2>
-      <span
-        className="ml-1 h-px flex-1 self-center"
-        style={{ backgroundColor: HAIR }}
-      />
-    </div>
+    <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+      {children}
+    </h2>
   );
 }
 
 function Stat({
   label,
-  hint,
   value,
   accent = false,
 }: {
   label: string;
-  hint: string;
   value: string;
   accent?: boolean;
 }) {
   return (
-    <div className="py-5 pr-4">
+    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+      <p className="text-xs font-medium text-neutral-500">{label}</p>
       <p
-        className="text-[10px] font-medium uppercase tracking-[0.14em]"
-        style={{ color: STONE }}
-      >
-        {label}
-      </p>
-      <p
-        className={`${fraunces.className} mt-1.5 text-[28px] leading-none font-medium`}
-        style={{ color: accent ? BRAND : INK }}
+        className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight"
+        style={accent ? { color: BRAND } : undefined}
       >
         {value}
       </p>
-      <p className="mt-1.5 text-[11px] leading-snug" style={{ color: STONE }}>
-        {hint}
-      </p>
     </div>
   );
 }
-
-function StatGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="mt-2 grid grid-cols-2 [&>*]:border-t [&>*:nth-child(odd)]:border-r [&>*:nth-child(even)]:pl-4"
-      style={{ borderColor: HAIR, ["--tw-border-opacity" as string]: 1 }}
-    >
-      {children}
-    </div>
-  );
-}
-
-/* ————— Página ————— */
 
 export default async function ReportePage({
   searchParams,
@@ -171,19 +117,13 @@ export default async function ReportePage({
   } catch (err) {
     console.error("[reporte] Error:", err);
     return (
-      <main
-        className={`${fraunces.variable} flex min-h-dvh items-center justify-center px-6`}
-        style={{ backgroundColor: PAPER, color: INK }}
-      >
+      <main className="flex min-h-dvh items-center justify-center bg-neutral-50 px-6 text-neutral-900">
         <div className="text-center">
           <Wordmark className="mx-auto h-6 w-auto" />
-          <p
-            className={`${fraunces.className} mt-8 text-xl`}
-            style={{ color: INK }}
-          >
+          <p className="mt-8 text-lg font-semibold">
             No pudimos cargar el reporte.
           </p>
-          <p className="mt-2 text-sm" style={{ color: STONE }}>
+          <p className="mt-2 text-sm text-neutral-500">
             Volvé a intentar en unos minutos.
           </p>
         </div>
@@ -201,225 +141,127 @@ export default async function ReportePage({
   });
 
   return (
-    <main
-      className="min-h-dvh"
-      style={{ backgroundColor: PAPER, color: INK }}
-    >
-      {/* Regla de marca, estilo cabecera de imprenta */}
+    <main className="min-h-dvh bg-neutral-50 text-neutral-900">
+      {/* Regla de marca */}
       <div className="h-1" style={{ backgroundColor: BRAND }} />
 
-      <style>{`
-        @keyframes rfade {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .rfade { animation: rfade .55s cubic-bezier(.2,.65,.3,1) both; }
-        @media (prefers-reduced-motion: reduce) { .rfade { animation: none; } }
-      `}</style>
-
-      <div className="mx-auto max-w-md px-6 pb-16 sm:max-w-lg">
+      <div className="mx-auto max-w-md px-5 pb-14 sm:max-w-lg">
         {/* Cabecera */}
-        <header className="rfade pt-10" style={{ animationDelay: "0ms" }}>
-          <div className="flex items-center justify-between">
-            <Wordmark className="h-5 w-auto" />
-            <p
-              className="text-[10px] font-medium uppercase tracking-[0.22em]"
-              style={{ color: STONE }}
-            >
-              Reporte diario
-            </p>
-          </div>
-          <h1
-            className={`${fraunces.className} mt-10 text-[34px] leading-[1.08] font-medium text-balance capitalize`}
-          >
-            {longDate}
-          </h1>
-          <p className="mt-3 text-[13px] leading-relaxed" style={{ color: STONE }}>
-            Resumen ejecutivo de la operación del día anterior. Mismos cálculos
-            y filtros que el dashboard.
+        <header className="flex items-center justify-between pt-7 pb-2">
+          <Wordmark className="h-5 w-auto" />
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+            Reporte diario
           </p>
         </header>
+        <h1 className="mt-4 text-2xl font-bold capitalize tracking-tight text-balance">
+          {longDate}
+        </h1>
 
-        {/* 01 — Conversaciones */}
-        <section className="rfade" style={{ animationDelay: "90ms" }}>
-          <SectionHeader index="01" title="Conversaciones" />
-          <StatGrid>
-            <Stat
-              label="Contactos únicos"
-              hint="Personas distintas que escribieron"
-              value={fmtInt(data.totalContacts)}
-            />
-            <Stat
-              label="Sesiones"
-              hint="Aperturas de conversación (con reingresos)"
-              value={fmtInt(data.totalSessions)}
-            />
-            <Stat
-              label="Atendidas por agente"
-              hint="Sesiones tomadas por un agente humano"
-              value={fmtInt(data.attendedConversations)}
-            />
-            <Stat
-              label="Cerradas"
-              hint="Sesiones cerradas por agentes en el día"
-              value={fmtInt(data.closedConversations)}
-            />
-          </StatGrid>
-          <div className="border-t py-5" style={{ borderColor: HAIR }}>
-            <p
-              className="text-[10px] font-medium uppercase tracking-[0.14em]"
-              style={{ color: STONE }}
-            >
+        {/* Conversaciones */}
+        <SectionTitle>Conversaciones</SectionTitle>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Contactos únicos" value={fmtInt(data.totalContacts)} />
+          <Stat label="Sesiones" value={fmtInt(data.totalSessions)} />
+          <Stat
+            label="Atendidas por agente"
+            value={fmtInt(data.attendedConversations)}
+          />
+          <Stat label="Cerradas" value={fmtInt(data.closedConversations)} />
+          <div className="col-span-2 rounded-xl border border-neutral-200 bg-white p-4">
+            <p className="text-xs font-medium text-neutral-500">
               Tiempo prom. 1ª respuesta
             </p>
-            <p
-              className={`${fraunces.className} mt-1.5 text-[28px] leading-none font-medium`}
-            >
+            <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight">
               {data.avgFirstResponseMs > 0
                 ? formatDuration(data.avgFirstResponseMs)
                 : "—"}
             </p>
-            <p className="mt-1.5 text-[11px]" style={{ color: STONE }}>
-              Desde la asignación al agente hasta su primera respuesta
-            </p>
           </div>
-        </section>
+        </div>
 
-        {/* 02 — Ventas */}
-        <section className="rfade" style={{ animationDelay: "180ms" }}>
-          <SectionHeader index="02" title="Ventas" />
-          <div className="border-t py-6" style={{ borderColor: HAIR }}>
-            <p
-              className="text-[10px] font-medium uppercase tracking-[0.14em]"
-              style={{ color: STONE }}
-            >
-              Monto total
+        {/* Ventas */}
+        <SectionTitle>Ventas</SectionTitle>
+        <div className="grid grid-cols-2 gap-3">
+          <div
+            className="col-span-2 rounded-xl border bg-white p-4"
+            style={{ borderColor: BRAND }}
+          >
+            <p className="text-xs font-medium text-neutral-500">
+              Monto total (Gs)
             </p>
             <p
-              className={`${fraunces.className} mt-2 text-[44px] leading-none font-medium`}
+              className="mt-1.5 text-3xl font-bold tabular-nums tracking-tight"
               style={{ color: BRAND }}
             >
-              <span className="text-[22px] align-top mr-1">Gs</span>
               {fmtGs(data.totalSalesAmount)}
             </p>
           </div>
-          <StatGrid>
-            <Stat
-              label="Ventas cerradas"
-              hint="Chats con venta registrada"
-              value={fmtInt(data.totalSales)}
-            />
-            <Stat
-              label="Conversión"
-              hint="Ventas sobre sesiones atendidas"
-              value={fmtPct(data.conversionRateAttended)}
-            />
-          </StatGrid>
-        </section>
+          <Stat label="Ventas cerradas" value={fmtInt(data.totalSales)} />
+          <Stat
+            label="Conversión"
+            value={fmtPct(data.conversionRateAttended)}
+          />
+        </div>
 
-        {/* 03 — Top agentes */}
+        {/* Top agentes */}
         {data.topAgents.length > 0 && (
-          <section className="rfade" style={{ animationDelay: "270ms" }}>
-            <SectionHeader index="03" title="Top agentes por ventas" />
-            <div className="mt-2">
+          <>
+            <SectionTitle>Top agentes por ventas</SectionTitle>
+            <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
               {data.topAgents.map((a, i) => (
                 <div
                   key={a.agentName}
-                  className="flex items-baseline gap-4 border-t py-4"
-                  style={{ borderColor: HAIR }}
+                  className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-neutral-100" : ""}`}
                 >
                   <span
-                    className={`${fraunces.className} w-6 shrink-0 text-sm italic`}
-                    style={{ color: i === 0 ? BRAND : STONE }}
+                    className="w-5 shrink-0 text-sm font-bold tabular-nums"
+                    style={{ color: i === 0 ? BRAND : "#a3a3a3" }}
                   >
-                    {String(i + 1).padStart(2, "0")}
+                    {i + 1}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
                     {a.agentName}
                   </span>
-                  <span className="shrink-0 text-right">
-                    <span
-                      className={`${fraunces.className} text-[15px]`}
-                    >
-                      Gs {fmtGs(a.totalAmount)}
-                    </span>
-                    <span
-                      className="ml-2 text-[11px]"
-                      style={{ color: STONE }}
-                    >
-                      {fmtInt(a.salesCount)} {a.salesCount === 1 ? "venta" : "ventas"}
-                    </span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">
+                    Gs {fmtGs(a.totalAmount)}
+                  </span>
+                  <span className="shrink-0 text-xs text-neutral-400">
+                    {fmtInt(a.salesCount)} {a.salesCount === 1 ? "venta" : "ventas"}
                   </span>
                 </div>
               ))}
             </div>
-          </section>
+          </>
         )}
 
-        {/* 04 — Meta Ads */}
+        {/* Meta Ads */}
         {data.meta && (
-          <section className="rfade" style={{ animationDelay: "360ms" }}>
-            <SectionHeader index="04" title="Meta Ads" />
-            <StatGrid>
+          <>
+            <SectionTitle>Meta Ads</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Gasto (USD)" value={`$ ${fmtUsd(data.meta.spend)}`} />
+              <Stat label="Alcance" value={fmtInt(data.meta.reach)} />
               <Stat
-                label="Gasto"
-                hint="Inversión publicitaria del día (USD)"
-                value={`$ ${fmtUsd(data.meta.spend)}`}
-              />
-              <Stat
-                label="Alcance"
-                hint="Personas que vieron los anuncios"
-                value={fmtInt(data.meta.reach)}
-              />
-              <Stat
-                label="Conv. iniciadas"
-                hint="Conversaciones atribuidas a anuncios (Meta)"
+                label="Aperturas de chat por anuncios"
                 value={fmtInt(data.meta.conversations)}
               />
               <Stat
-                label="Costo por conv."
-                hint="Gasto sobre conversaciones iniciadas (USD)"
+                label="Costo por apertura (USD)"
                 value={`$ ${fmtUsd(data.meta.costPerConversation)}`}
               />
-            </StatGrid>
-          </section>
+            </div>
+          </>
         )}
 
-        {/* Nota metodológica */}
-        <section className="rfade" style={{ animationDelay: "450ms" }}>
-          <div
-            className="mt-14 border-t pt-5"
-            style={{ borderColor: HAIR }}
-          >
-            <p
-              className="text-[10px] font-semibold uppercase tracking-[0.22em]"
-              style={{ color: STONE }}
-            >
-              Nota metodológica
-            </p>
-            <p
-              className="mt-3 text-[12px] leading-relaxed"
-              style={{ color: STONE }}
-            >
-              Contactos y sesiones miden cosas distintas: un mismo contacto
-              puede abrir varias sesiones en el día, y una sesión puede pasar
-              por más de un agente. Por eso “atendidas por agente” puede
-              superar a los contactos únicos. Las cifras de Meta provienen de
-              la atribución publicitaria de Meta y no equivalen a chats de
-              Botmaker.
-            </p>
-          </div>
-        </section>
-
         {/* Pie */}
-        <footer
-          className="rfade mt-12 flex items-center justify-between border-t pt-5"
-          style={{ borderColor: HAIR, animationDelay: "520ms" }}
-        >
-          <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: STONE }}>
+        <footer className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-4">
+          <p className="text-[11px] text-neutral-400">
             NosVamoos · {data.dateLabel}
           </p>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: BRAND }} />
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: BRAND }}
+          />
         </footer>
       </div>
     </main>
