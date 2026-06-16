@@ -13,6 +13,7 @@ import {
   MessageCircle,
   TrendingUp,
   Users,
+  UserCheck,
 } from "lucide-react";
 import type { MetaTotals } from "@/lib/meta-aggregation";
 
@@ -31,6 +32,8 @@ function InfoTip({ text }: { text: string }) {
 
 interface MetaKpiCardsProps {
   totals: MetaTotals;
+  /** Contactos únicos de Botmaker iniciados desde un anuncio (referralSourceType = "ad"). */
+  adsContacts: number;
 }
 
 function fmtInt(n: number): string {
@@ -78,9 +81,9 @@ function Kpi({
   );
 }
 
-export function MetaKpiCards({ totals }: MetaKpiCardsProps) {
+export function MetaKpiCards({ totals, adsContacts }: MetaKpiCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
       <Kpi
         icon={<DollarSign className="size-3.5" />}
         title="Gasto total"
@@ -98,6 +101,12 @@ export function MetaKpiCards({ totals }: MetaKpiCardsProps) {
         title="Conversaciones iniciadas"
         tip="Eventos de conversación de WhatsApp iniciada atribuidos a anuncios (métrica de Meta, ventana de 7 días). Una misma persona puede contar más de una vez si reinicia conversación tras 7+ días de inactividad; no equivale a chats únicos de Botmaker."
         value={fmtInt(totals.conversations)}
+      />
+      <Kpi
+        icon={<UserCheck className="size-3.5" />}
+        title="Contactos únicos por Ads"
+        tip="Contactos únicos de Botmaker cuyo chat se inició desde un anuncio de Meta."
+        value={fmtInt(adsContacts)}
       />
       <Kpi
         icon={<TrendingUp className="size-3.5" />}

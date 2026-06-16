@@ -6,6 +6,7 @@ import {
   normalizeTypification,
   isTestTypification,
 } from "@/lib/dashboard-filters";
+import { isAdsReferral } from "@/lib/dashboard-aggregation";
 
 function parseNum(s: string | undefined): number {
   if (s == null || s === "") return 0;
@@ -31,6 +32,10 @@ export interface SalesKpis {
   avgTripDays: number;
   attendedConversations: number;
   conversionRateAttended: number;
+  /** % de contactos orgánicos que registraron una venta. */
+  organicConversionRate: number;
+  /** % de contactos Ads que registraron una venta. */
+  adsConversionRate: number;
 }
 
 export function computeSalesKpis(
@@ -63,10 +68,38 @@ export function computeSalesKpis(
     }
   }
 
+  // Conversión por contacto único, separada por origen (mismo criterio que General).
+  const contactIsAds = new Map<string, boolean>();
+  const contactConverted = new Map<string, boolean>();
+  for (const chat of chats) {
+    const id = chat.chat?.contactId;
+    if (!id) continue;
+    contactIsAds.set(id, (contactIsAds.get(id) ?? false) || isAdsReferral(chat));
+    contactConverted.set(id, (contactConverted.get(id) ?? false) || isSale(chat));
+  }
+  let adsContacts = 0;
+  let organicContacts = 0;
+  let adsConversions = 0;
+  let organicConversions = 0;
+  for (const [id, isAds] of contactIsAds) {
+    const converted = contactConverted.get(id) ?? false;
+    if (isAds) {
+      adsContacts += 1;
+      if (converted) adsConversions += 1;
+    } else {
+      organicContacts += 1;
+      if (converted) organicConversions += 1;
+    }
+  }
+
   return {
     totalChats,
     totalSales,
     conversionRate: totalChats > 0 ? (totalSales / totalChats) * 100 : 0,
+    organicConversionRate:
+      organicContacts > 0 ? (organicConversions / organicContacts) * 100 : 0,
+    adsConversionRate:
+      adsContacts > 0 ? (adsConversions / adsContacts) * 100 : 0,
     totalAmount,
     avgTicket: totalSales > 0 ? totalAmount / totalSales : 0,
     avgPassengers: passengersCount > 0 ? passengersSum / passengersCount : 0,

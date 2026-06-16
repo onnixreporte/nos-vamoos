@@ -23,6 +23,8 @@ import {
   groupSpendByDay,
   sumInsights,
 } from "@/lib/meta-aggregation";
+import { countAdsContacts } from "@/lib/dashboard-aggregation";
+import { fetchAllChatsWithGapFill } from "@/lib/chats-client";
 import type { MetaInsightsRow } from "@/lib/meta-types";
 
 interface MetaPayload {
@@ -52,6 +54,7 @@ export default function MetaPage() {
   const [dailyRows, setDailyRows] = useState<MetaInsightsRow[]>([]);
   const [campaignRows, setCampaignRows] = useState<MetaInsightsRow[]>([]);
   const [campaignDailyRows, setCampaignDailyRows] = useState<MetaInsightsRow[]>([]);
+  const [adsContacts, setAdsContacts] = useState(0);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("__all__");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +117,34 @@ export default function MetaPage() {
       }
     })();
 
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [debouncedFilter?.from, debouncedFilter?.to, debouncedFilter?.longTerm, refreshTrigger]);
+
+  // Contactos únicos iniciados desde Ads (referralSourceType="ad").
+  // Usa el MISMO conjunto de chats que cuenta /dashboard (gap-fill + test typifications
+  // + isChatInRange) para que el número coincida con la card de Vista General.
+  useEffect(() => {
+    if (!debouncedFilter?.from || !debouncedFilter?.to) {
+      setAdsContacts(0);
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    (async () => {
+      try {
+        const chats = await fetchAllChatsWithGapFill(
+          debouncedFilter,
+          controller.signal,
+        );
+        if (cancelled) return;
+        setAdsContacts(countAdsContacts(chats));
+      } catch {
+        // opcional para la card; ignorar errores
+      }
+    })();
     return () => {
       cancelled = true;
       controller.abort();
@@ -201,7 +232,7 @@ export default function MetaPage() {
         </div>
       ) : (
         <>
-          <MetaKpiCards totals={totals} />
+          <MetaKpiCards totals={totals} adsContacts={adsContacts} />
           <div className="grid gap-4 md:grid-cols-2">
             <MetaSpendAreaChart data={spendByDay} />
             <ConversationsAreaChart

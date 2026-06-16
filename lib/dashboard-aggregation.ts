@@ -7,16 +7,32 @@ import { countryFromPhone } from "@/lib/phone-country";
 export interface OverviewKpis {
   totalConversations: number;
   totalSalesAmount: number;
-  /** Monto de ventas de chats con variables.origen = pauta. */
+  /** Cantidad de chats con una venta cerrada (monto_venta > 0). */
+  totalSalesCount: number;
+  /** Monto de ventas de chats que llegaron desde anuncios de Meta (referralSourceType = "ad"). */
   adsSalesAmount: number;
-  /** Monto de ventas del resto (origen distinto de pauta o sin cargar). */
+  /** Cantidad de ventas desde anuncios de Meta. */
+  adsSalesCount: number;
+  /** Monto de ventas del resto (sin referido de anuncio). */
   organicSalesAmount: number;
+  /** Cantidad de ventas del resto (sin referido de anuncio). */
+  organicSalesCount: number;
   closedConversations: number;
   avgFirstResponseMs: number;
   avgAttendingMs: number;
   avgBotAttendingMs: number;
   totalSessions?: number;
   totalContacts: number;
+  /** Contactos únicos que llegaron desde anuncios de Meta (referralSourceType = "ad"). */
+  adsContacts: number;
+  /** Contactos únicos sin referido de anuncio. */
+  organicContacts: number;
+  /** % de contactos Ads que registraron una venta (monto_venta). */
+  adsConversionRate: number;
+  /** % de contactos orgánicos que registraron una venta (monto_venta). */
+  organicConversionRate: number;
+  /** % de ventas sobre conversaciones atendidas por agente (ventas / atendidas). */
+  conversionRateAttended: number;
   attendedConversations: number;
 }
 
@@ -35,12 +51,19 @@ export function normalizeOrigin(s: string): string {
     .toLowerCase();
 }
 
-const ADS_ORIGINS = new Set(["pauta", "pautas"]);
+/** Chat iniciado desde un anuncio de Meta (referral CTWA): variables.referralSourceType = "ad". */
+export function isAdsReferral(chat: ChatWithMessagesResponse): boolean {
+  return chat.variables?.referralSourceType === "ad";
+}
 
-/** Chat proveniente de un anuncio según la variable `origen` cargada en Botmaker. */
-export function isAdsOrigin(chat: ChatWithMessagesResponse): boolean {
-  const origin = chat.variables?.origen;
-  return origin != null && ADS_ORIGINS.has(normalizeOrigin(origin));
+/** Contactos únicos (contactId) con al menos un chat iniciado desde un anuncio de Meta. */
+export function countAdsContacts(chats: ChatWithMessagesResponse[]): number {
+  const adsContactIds = new Set<string>();
+  for (const chat of chats) {
+    const id = chat.chat?.contactId;
+    if (id && isAdsReferral(chat)) adsContactIds.add(id);
+  }
+  return adsContactIds.size;
 }
 
 /**
@@ -59,15 +82,22 @@ export function computeOverviewKpis(
 
   let totalSalesAmount = 0;
   let adsSalesAmount = 0;
+  let totalSalesCount = 0;
+  let adsSalesCount = 0;
   for (const chat of chats) {
     const val = chat.variables?.monto_venta;
     if (val != null && val !== "") {
       const amount = parseNum(val);
       totalSalesAmount += amount;
-      if (isAdsOrigin(chat)) adsSalesAmount += amount;
+      if (amount > 0) totalSalesCount += 1;
+      if (isAdsReferral(chat)) {
+        adsSalesAmount += amount;
+        if (amount > 0) adsSalesCount += 1;
+      }
     }
   }
   const organicSalesAmount = totalSalesAmount - adsSalesAmount;
+  const organicSalesCount = totalSalesCount - adsSalesCount;
 
   const closedConversationIds = new Set<string>();
   let firstResponseSumMs = 0;
@@ -85,28 +115,63 @@ export function computeOverviewKpis(
   const avgFirstResponseMs =
     firstResponseCount > 0 ? firstResponseSumMs / firstResponseCount : 0;
 
-  const uniqueContactIds = new Set<string>();
+  // Un contactId se considera "ads" si alguno de sus chats fue iniciado desde un anuncio,
+  // y "convertido" si alguno de sus chats tiene monto_venta cargado.
+  const contactIsAds = new Map<string, boolean>();
+  const contactConverted = new Map<string, boolean>();
   for (const chat of chats) {
     const id = chat.chat?.contactId;
-    if (id) uniqueContactIds.add(id);
+    if (!id) continue;
+    contactIsAds.set(id, (contactIsAds.get(id) ?? false) || isAdsReferral(chat));
+    const sale = chat.variables?.monto_venta;
+    const converted = sale != null && sale !== "" && parseNum(sale) > 0;
+    contactConverted.set(id, (contactConverted.get(id) ?? false) || converted);
   }
+  let adsContacts = 0;
+  let organicContacts = 0;
+  let adsConversions = 0;
+  let organicConversions = 0;
+  for (const [id, isAds] of contactIsAds) {
+    const converted = contactConverted.get(id) ?? false;
+    if (isAds) {
+      adsContacts += 1;
+      if (converted) adsConversions += 1;
+    } else {
+      organicContacts += 1;
+      if (converted) organicConversions += 1;
+    }
+  }
+  const adsConversionRate =
+    adsContacts > 0 ? (adsConversions / adsContacts) * 100 : 0;
+  const organicConversionRate =
+    organicContacts > 0 ? (organicConversions / organicContacts) * 100 : 0;
 
   let attendedConversations = 0;
   for (const item of agentItems) {
     attendedConversations +=
       parseNum(item.openSessions) + parseNum(item.closedSessions);
   }
+  const conversionRateAttended =
+    attendedConversations > 0 ? (totalSalesCount / attendedConversations) * 100 : 0;
 
   return {
     totalConversations,
     totalSalesAmount,
+    totalSalesCount,
     adsSalesAmount,
+    adsSalesCount,
     organicSalesAmount,
+    organicSalesCount,
     closedConversations: closedConversationIds.size,
     avgFirstResponseMs,
     avgAttendingMs: 0,
     avgBotAttendingMs: 0,
-    totalContacts: uniqueContactIds.size,
+    totalContacts: contactIsAds.size,
+    adsContacts,
+    organicContacts,
+    adsConversionRate,
+    organicConversionRate,
+    conversionRateAttended,
     attendedConversations,
   };
 }

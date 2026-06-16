@@ -12,7 +12,6 @@ import {
   DollarSign,
   Receipt,
   ShoppingCart,
-  Users,
 } from "lucide-react";
 
 interface SalesKpiCardsProps {
@@ -28,12 +27,12 @@ function formatCurrency(n: number): string {
 
 export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       <Card>
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <TrendingUp className="size-3.5" />
-            Tasa de conversión
+            Tasa de conversión contactos únicos
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -49,7 +48,7 @@ export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
         <CardHeader className="pb-1">
           <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <TrendingUp className="size-3.5" />
-            Tasa de conversión (atendidas)
+            Tasa de conversión (Derivadas)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -58,6 +57,38 @@ export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
           </p>
           <p className="text-xs text-muted-foreground">
             {kpis.totalSales} ventas de {kpis.attendedConversations} atendidas
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <TrendingUp className="size-3.5" />
+            Tasa conversión orgánica
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-semibold tabular-nums">
+            {kpis.organicConversionRate.toFixed(1)}%
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Contactos orgánicos con venta
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-1">
+          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <TrendingUp className="size-3.5" />
+            Tasa conversión Ads
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-semibold tabular-nums">
+            {kpis.adsConversionRate.toFixed(1)}%
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Contactos Ads con venta
           </p>
         </CardContent>
       </Card>
@@ -97,19 +128,6 @@ export function SalesKpiCards({ kpis }: SalesKpiCardsProps) {
         <CardContent>
           <p className="text-2xl font-semibold tabular-nums">
             {kpis.totalSales}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-1">
-          <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-            <Users className="size-3.5" />
-            Prom. pasajeros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-semibold tabular-nums">
-            {kpis.avgPassengers > 0 ? kpis.avgPassengers.toFixed(1) : "—"}
           </p>
         </CardContent>
       </Card>

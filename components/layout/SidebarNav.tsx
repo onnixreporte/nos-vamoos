@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   DollarSign,
   Users,
-  MapPin,
   MessageSquare,
   GitCompareArrows,
   Megaphone,
@@ -32,11 +31,6 @@ const navItems = [
     title: "Agentes",
     href: "/agentes",
     icon: Users,
-  },
-  {
-    title: "Destinos",
-    href: "/destinos",
-    icon: MapPin,
   },
   {
     title: "Conversaciones",

@@ -6,9 +6,9 @@ import { AgentSessionsBarChart } from "@/components/charts/agent-sessions-bar-ch
 import { ChannelsPieChart } from "@/components/charts/channels-pie-chart";
 import { ContactScheduleHeatmap } from "@/components/charts/contact-schedule-heatmap";
 import { ConversationsAreaChart } from "@/components/charts/conversations-area-chart";
-import { CountryMapChart } from "@/components/charts/country-map-chart";
-import { MonthlyCalendarHeatmap } from "@/components/charts/monthly-calendar-heatmap";
 import { TopDestinationsBarChart } from "@/components/charts/top-destinations-bar-chart";
+import { ContactsFunnelChart } from "@/components/charts/contacts-funnel-chart";
+import { MonthlyCalendarHeatmap } from "@/components/charts/monthly-calendar-heatmap";
 import { OverviewKpiCards } from "@/components/dashboard/overview-kpi-cards";
 import { DateFilterBar } from "@/components/filters/date-filter-bar";
 import { useRefreshContext } from "@/store/refresh-context";
@@ -16,13 +16,14 @@ import { aggregateByAgent } from "@/lib/agent-aggregation";
 import {
   computeOverviewKpis,
   countByChannel,
-  countByCountry,
   countByDestination,
   countSalesByDayOfMonth,
   groupByHourAndDay,
   groupChatsByDayOfMonth,
   groupConversationsByTime,
 } from "@/lib/dashboard-aggregation";
+import { sumInsights } from "@/lib/meta-aggregation";
+import type { MetaInsightsRow } from "@/lib/meta-types";
 import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
 import { usePersistedFilter } from "@/hooks/use-persisted-filter";
 import { getCachedPageData, setCachedPageData, invalidatePageData } from "@/lib/page-data-cache";
@@ -78,6 +79,7 @@ export default function DashboardPage() {
   const [chats, setChats] = useState<ChatWithMessagesResponse[]>([]);
   const [agentItems, setAgentItems] = useState<AgentMetricsItem[]>([]);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [metaConversations, setMetaConversations] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:dashboard", "week");
@@ -261,6 +263,37 @@ export default function DashboardPage() {
       controller.abort();
     };
   }, [debouncedFilter?.from, debouncedFilter?.to, debouncedFilter?.longTerm, refreshTrigger]);
+
+  // Meta Ads: conversaciones iniciadas (messaging_conversation_started) para el funnel.
+  useEffect(() => {
+    if (!debouncedFilter?.from || !debouncedFilter?.to) {
+      setMetaConversations(0);
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams({
+          from: debouncedFilter.from,
+          to: debouncedFilter.to,
+        });
+        const res = await fetch(`/api/meta/insights?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const body = (await res.json()) as { data?: MetaInsightsRow[] };
+        if (cancelled) return;
+        setMetaConversations(sumInsights(body.data ?? []).conversations);
+      } catch {
+        // Meta es opcional para el funnel; ignorar errores.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [debouncedFilter?.from, debouncedFilter?.to, refreshTrigger]);
 
   const metadataMaps = useMemo(
     () => buildChatMetadataMaps(agentItems),
@@ -472,11 +505,6 @@ export default function DashboardPage() {
     [filteredChats, calendarYearMonth.year, calendarYearMonth.month],
   );
 
-  const countryCounts = useMemo(
-    () => countByCountry(filteredChats),
-    [filteredChats],
-  );
-
   return (
     <div className="min-w-0 space-y-6" suppressHydrationWarning>
       <div className="space-y-1" suppressHydrationWarning>
@@ -507,9 +535,15 @@ export default function DashboardPage() {
       ) : (
         <>
           <OverviewKpiCards kpis={kpis} />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <ConversationsAreaChart data={timeBuckets} />
             <TopDestinationsBarChart data={topDestinations} />
+            <ContactsFunnelChart
+              conversationsStarted={metaConversations}
+              totalContacts={kpis.totalContacts}
+              attendedConversations={kpis.attendedConversations}
+              salesCount={kpis.totalSalesCount}
+            />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ChannelsPieChart data={channelCounts} />
@@ -530,7 +564,6 @@ export default function DashboardPage() {
               salesByDay={salesByDay}
             />
           </div>
-          <CountryMapChart data={countryCounts} />
         </>
       )}
     </div>
