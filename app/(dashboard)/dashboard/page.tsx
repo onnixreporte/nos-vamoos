@@ -8,6 +8,7 @@ import { ContactScheduleHeatmap } from "@/components/charts/contact-schedule-hea
 import { ConversationsAreaChart } from "@/components/charts/conversations-area-chart";
 import { TopDestinationsBarChart } from "@/components/charts/top-destinations-bar-chart";
 import { ContactsFunnelChart } from "@/components/charts/contacts-funnel-chart";
+import { AnnualContactsLineChart } from "@/components/charts/annual-contacts-line-chart";
 import { MonthlyCalendarHeatmap } from "@/components/charts/monthly-calendar-heatmap";
 import { OverviewKpiCards } from "@/components/dashboard/overview-kpi-cards";
 import { DateFilterBar } from "@/components/filters/date-filter-bar";
@@ -21,10 +22,9 @@ import {
   groupByHourAndDay,
   groupChatsByDayOfMonth,
   groupConversationsByTime,
+  type MonthlyBucket,
 } from "@/lib/dashboard-aggregation";
-import { sumInsights } from "@/lib/meta-aggregation";
-import type { MetaInsightsRow } from "@/lib/meta-types";
-import { buildPresetRange, type DateFilter } from "@/lib/date-filters";
+import { buildPresetRange, buildMonthRange, toPYTime, type DateFilter } from "@/lib/date-filters";
 import { usePersistedFilter } from "@/hooks/use-persisted-filter";
 import { getCachedPageData, setCachedPageData, invalidatePageData } from "@/lib/page-data-cache";
 import {
@@ -36,7 +36,7 @@ import {
   EXCLUDED_AGENT_NAMES,
 } from "@/lib/dashboard-filters";
 import { isTestChat } from "@/lib/test-contacts";
-import { isChatInRange } from "@/lib/chats-client";
+import { isChatInRange, fetchAllChatsWithGapFill } from "@/lib/chats-client";
 import type {
   AgentMetricsItem,
   AgentMetricsPage,
@@ -79,16 +79,18 @@ export default function DashboardPage() {
   const [chats, setChats] = useState<ChatWithMessagesResponse[]>([]);
   const [agentItems, setAgentItems] = useState<AgentMetricsItem[]>([]);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [metaConversations, setMetaConversations] = useState(0);
+  const [annualData, setAnnualData] = useState<MonthlyBucket[]>([]);
+  const [annualLoading, setAnnualLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:dashboard", "week");
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:dashboard", "yesterday");
   const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(appliedFilter);
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const lastRefreshRef = useRef(0);
+  const lastAnnualRefreshRef = useRef(0);
 
   const { registerRefresh, unregisterRefresh } = useRefreshContext();
   useEffect(() => {
@@ -264,36 +266,77 @@ export default function DashboardPage() {
     };
   }, [debouncedFilter?.from, debouncedFilter?.to, debouncedFilter?.longTerm, refreshTrigger]);
 
-  // Meta Ads: conversaciones iniciadas (messaging_conversation_started) para el funnel.
+  // Año y mes actual en hora Paraguay. useState lazy init → estable de por vida.
+  const [annualMeta] = useState(() => {
+    const nowPY = toPYTime(new Date());
+    return { year: nowPY.getFullYear(), currentMonth: nowPY.getMonth() };
+  });
+
+  // Chats por mes (línea anual). Independiente del filtro de fecha pero SOLO
+  // arranca cuando el resto del dashboard ya cargó, para no competir por la red.
+  // Cada mes se cuenta con EXACTAMENTE el mismo pipeline que el dashboard al
+  // filtrar ese mes (fetchAllChatsWithGapFill por rango mensual), de modo que el
+  // valor del mes coincide con "Total Contactos" cuando se filtra ese mes.
   useEffect(() => {
-    if (!debouncedFilter?.from || !debouncedFilter?.to) {
-      setMetaConversations(0);
-      return;
-    }
+    if (loading) return; // esperar a que cargue todo lo demás primero
+
     const controller = new AbortController();
     let cancelled = false;
+    const cacheKey = `${annualMeta.year}`;
+
     (async () => {
       try {
-        const params = new URLSearchParams({
-          from: debouncedFilter.from,
-          to: debouncedFilter.to,
-        });
-        const res = await fetch(`/api/meta/insights?${params.toString()}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const body = (await res.json()) as { data?: MetaInsightsRow[] };
+        const isRefresh =
+          lastAnnualRefreshRef.current !== refreshTrigger && refreshTrigger > 0;
+        lastAnnualRefreshRef.current = refreshTrigger;
+
+        if (!isRefresh) {
+          const cached = getCachedPageData<MonthlyBucket[]>(
+            "dashboard-annual",
+            cacheKey,
+            cacheKey,
+            true,
+          );
+          if (cached) {
+            setAnnualData(cached);
+            setAnnualLoading(false);
+            return;
+          }
+        }
+
+        setAnnualLoading(true);
+
+        // Meses marzo (2) … diciembre (11). Cuenta solo hasta el mes actual;
+        // meses futuros quedan en null (la línea se completa mes a mes).
+        const buckets: MonthlyBucket[] = await Promise.all(
+          Array.from({ length: 10 }, (_, i) => 2 + i).map(async (m) => {
+            const label = `${annualMeta.year}-${String(m + 1).padStart(2, "0")}`;
+            if (m > annualMeta.currentMonth) return { label, count: null };
+            const range = buildMonthRange(annualMeta.year, m);
+            // El mes actual aún no terminó: capar el "to" a ahora; un "to" futuro
+            // hace que agent-metrics devuelva 400.
+            if (m === annualMeta.currentMonth) {
+              range.to = new Date().toISOString();
+            }
+            const chats = await fetchAllChatsWithGapFill(range, controller.signal);
+            return { label, count: chats.length };
+          }),
+        );
         if (cancelled) return;
-        setMetaConversations(sumInsights(body.data ?? []).conversations);
+        setCachedPageData("dashboard-annual", cacheKey, cacheKey, true, buckets);
+        setAnnualData(buckets);
       } catch {
-        // Meta es opcional para el funnel; ignorar errores.
+        // La línea anual es complementaria; ignorar errores de carga.
+      } finally {
+        if (!cancelled) setAnnualLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [debouncedFilter?.from, debouncedFilter?.to, refreshTrigger]);
+  }, [loading, annualMeta.year, annualMeta.currentMonth, refreshTrigger]);
 
   const metadataMaps = useMemo(
     () => buildChatMetadataMaps(agentItems),
@@ -517,7 +560,7 @@ export default function DashboardPage() {
       <DateFilterBar
         appliedFilter={appliedFilter}
         onFilterChange={setAppliedFilter}
-        defaultPreset="week"
+        defaultPreset="yesterday"
         additionalFilters={additionalFilters}
         onAdditionalFiltersChange={setAdditionalFilters}
         additionalFilterOptions={filterOptions}
@@ -539,12 +582,12 @@ export default function DashboardPage() {
             <ConversationsAreaChart data={timeBuckets} />
             <TopDestinationsBarChart data={topDestinations} />
             <ContactsFunnelChart
-              conversationsStarted={metaConversations}
               totalContacts={kpis.totalContacts}
               attendedConversations={kpis.attendedConversations}
               salesCount={kpis.totalSalesCount}
             />
           </div>
+          <AnnualContactsLineChart data={annualData} loading={annualLoading} />
           <div className="grid gap-4 md:grid-cols-2">
             <ChannelsPieChart data={channelCounts} />
             <AgentSessionsBarChart agents={agentsAll} limit={8} />

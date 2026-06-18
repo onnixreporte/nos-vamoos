@@ -72,7 +72,7 @@ export default function VentasPage() {
   const [agentItems, setAgentItems] = useState<AgentMetricsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:ventas", "week");
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:ventas", "yesterday");
   const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(appliedFilter);
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
@@ -323,7 +323,7 @@ export default function VentasPage() {
       <DateFilterBar
         appliedFilter={appliedFilter}
         onFilterChange={setAppliedFilter}
-        defaultPreset="week"
+        defaultPreset="yesterday"
         additionalFilters={additionalFilters}
         onAdditionalFiltersChange={setAdditionalFilters}
         additionalFilterOptions={filterOptions}

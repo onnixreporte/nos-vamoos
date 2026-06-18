@@ -56,7 +56,7 @@ export default function AgentesPage() {
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:agentes", "week");
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:agentes", "yesterday");
   const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(
     appliedFilter,
   );
@@ -288,7 +288,7 @@ export default function AgentesPage() {
       <DateFilterBar
         appliedFilter={appliedFilter}
         onFilterChange={setAppliedFilter}
-        defaultPreset="week"
+        defaultPreset="yesterday"
         additionalFilters={additionalFilters}
         onAdditionalFiltersChange={setAdditionalFilters}
         additionalFilterOptions={filterOptions}

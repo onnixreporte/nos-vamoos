@@ -238,6 +238,13 @@ export function groupConversationsByTime(
   }));
 }
 
+export interface MonthlyBucket {
+  /** Mes en formato yyyy-MM. */
+  label: string;
+  /** Cantidad de chats en ese mes; null para meses futuros (sin datos aún). */
+  count: number | null;
+}
+
 export interface DestinationCount {
   destination: string;
   count: number;

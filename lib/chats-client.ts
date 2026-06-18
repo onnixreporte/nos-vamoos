@@ -118,23 +118,27 @@ export function isChatInRange(
 export async function fetchAllChatsWithGapFill(
   range: DateFilter,
   signal: AbortSignal,
+  options?: { gapFill?: boolean },
 ): Promise<ChatWithMessagesResponse[]> {
+  const gapFill = options?.gapFill ?? true;
   const [chatList, openItems, closedItems] = await Promise.all([
     fetchChatsList(range, signal),
     fetchAgentMetrics(range, "open", signal),
     fetchAgentMetrics(range, "closed", signal),
   ]);
   const allAgentItems = [...closedItems, ...openItems];
-  const existingIds = new Set(chatList.map((c) => c.chat.chatId));
-  const missingIds = [
-    ...new Set(
-      allAgentItems.map((i) => i.chatId).filter((id): id is string => !!id),
-    ),
-  ].filter((id) => !existingIds.has(id));
   let finalChats = chatList.filter((c) => !isTestChat(c));
-  if (missingIds.length > 0) {
-    const extra = await fetchMissingChats(missingIds, signal);
-    finalChats = [...finalChats, ...extra.filter((c) => !isTestChat(c))];
+  if (gapFill) {
+    const existingIds = new Set(chatList.map((c) => c.chat.chatId));
+    const missingIds = [
+      ...new Set(
+        allAgentItems.map((i) => i.chatId).filter((id): id is string => !!id),
+      ),
+    ].filter((id) => !existingIds.has(id));
+    if (missingIds.length > 0) {
+      const extra = await fetchMissingChats(missingIds, signal);
+      finalChats = [...finalChats, ...extra.filter((c) => !isTestChat(c))];
+    }
   }
   const testTypIds = buildTestTypificationChatIds(allAgentItems);
   if (testTypIds.size > 0) {

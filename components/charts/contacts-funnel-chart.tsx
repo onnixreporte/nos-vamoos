@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/chart";
 
 interface ContactsFunnelChartProps {
-  /** Conversaciones iniciadas desde anuncios de Meta (messaging_conversation_started). */
-  conversationsStarted: number;
   /** Total de contactos únicos (orgánicos + ads). */
   totalContacts: number;
   /** Conversaciones atendidas por un agente. */
@@ -36,16 +34,14 @@ const chartConfig = {
 const fmtInt = (n: number) => (n ?? 0).toLocaleString("es");
 
 export function ContactsFunnelChart({
-  conversationsStarted,
   totalContacts,
   attendedConversations,
   salesCount,
 }: ContactsFunnelChartProps) {
   const chartData = [
-    { stage: "Conversaciones iniciadas", value: conversationsStarted, fill: STAGE_COLORS[0] },
-    { stage: "Total contactos", value: totalContacts, fill: STAGE_COLORS[1] },
-    { stage: "Conversaciones atendidas", value: attendedConversations, fill: STAGE_COLORS[2] },
-    { stage: "Ventas cerradas", value: salesCount, fill: STAGE_COLORS[3] },
+    { stage: "Total contactos", value: totalContacts, fill: STAGE_COLORS[0] },
+    { stage: "Conversaciones atendidas", value: attendedConversations, fill: STAGE_COLORS[1] },
+    { stage: "Ventas cerradas", value: salesCount, fill: STAGE_COLORS[2] },
   ];
 
   const top = chartData[0].value;
@@ -54,15 +50,15 @@ export function ContactsFunnelChart({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-          Funnel de captación
+          Embudo
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="size-3.5 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
               <p className="max-w-xs">
-                Conversaciones iniciadas desde anuncios de Meta → total de contactos →
-                conversaciones atendidas por un agente → ventas cerradas.
+                Total de contactos → conversaciones atendidas por un agente →
+                ventas cerradas.
               </p>
             </TooltipContent>
           </Tooltip>

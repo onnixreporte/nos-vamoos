@@ -12,7 +12,7 @@ function readFromStorage(key: string, defaultPreset: string): DateFilter {
   return buildPresetRange(defaultPreset as Parameters<typeof buildPresetRange>[0]);
 }
 
-export function usePersistedFilter(storageKey: string, defaultPreset = "week") {
+export function usePersistedFilter(storageKey: string, defaultPreset = "yesterday") {
   const [filter, setFilterState] = useState<DateFilter | null>(() =>
     buildPresetRange(defaultPreset as Parameters<typeof buildPresetRange>[0]),
   );

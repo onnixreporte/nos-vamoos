@@ -101,7 +101,7 @@ export default function ConversacionesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:conversaciones", "week");
+  const [appliedFilter, setAppliedFilter] = usePersistedFilter("filter:conversaciones", "yesterday");
   const [debouncedFilter, setDebouncedFilter] = useState<DateFilter | null>(appliedFilter);
   const [additionalFilters, setAdditionalFilters] = useState(
     DEFAULT_ADDITIONAL_FILTERS,
@@ -469,7 +469,7 @@ export default function ConversacionesPage() {
       <DateFilterBar
         appliedFilter={appliedFilter}
         onFilterChange={setAppliedFilter}
-        defaultPreset="week"
+        defaultPreset="yesterday"
         additionalFilters={additionalFilters}
         onAdditionalFiltersChange={setAdditionalFilters}
         additionalFilterOptions={filterOptions}

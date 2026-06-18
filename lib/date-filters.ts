@@ -72,6 +72,23 @@ export function buildPresetRange(
   };
 }
 
+/**
+ * Build the [from, to] range for a full calendar month anchored to Paraguay time.
+ * monthIndex is 0-based (0 = enero, 4 = mayo). Coincide con lo que produce el
+ * filtro de fecha al seleccionar un mes completo, por lo que el conteo de chats
+ * de ese rango iguala exactamente al "Total Contactos" del dashboard filtrado.
+ */
+export function buildMonthRange(year: number, monthIndex: number): DateFilter {
+  const start = new TZDate(year, monthIndex, 1, 0, 0, 0, 0, PY_TZ);
+  // día 0 del mes siguiente = último día del mes actual
+  const end = new TZDate(year, monthIndex + 1, 0, 23, 59, 59, 999, PY_TZ);
+  return {
+    from: formatForApi(start),
+    to: formatForApi(end),
+    longTerm: true,
+  };
+}
+
 export function toIsoWithTime(date: Date, time: string, asEnd = false): string {
   const parts = time.split(":");
   const hours = Number(parts[0] ?? 0);
