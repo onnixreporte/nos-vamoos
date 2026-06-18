@@ -34,6 +34,12 @@ export interface OverviewKpis {
   /** % de ventas sobre conversaciones atendidas por agente (ventas / atendidas). */
   conversionRateAttended: number;
   attendedConversations: number;
+  /**
+   * Contactos únicos del rango atendidos por un agente real (chatIds únicos).
+   * Métrica a nivel contacto para el embudo y la card; ⊆ totalContacts.
+   * Distinta de attendedConversations, que cuenta sesiones (open+closed).
+   */
+  attendedContacts?: number;
 }
 
 function parseNum(s: string | undefined): number {

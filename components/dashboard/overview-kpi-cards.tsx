@@ -166,7 +166,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         </CardHeader>
         <CardContent>
           <p className="text-lg font-semibold tabular-nums">
-            {kpis.attendedConversations.toLocaleString("es")}
+            {(kpis.attendedContacts ?? kpis.attendedConversations).toLocaleString("es")}
           </p>
         </CardContent>
       </Card>
