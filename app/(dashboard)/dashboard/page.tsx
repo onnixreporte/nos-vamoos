@@ -462,11 +462,23 @@ export default function DashboardPage() {
       }
     }
     const avgBotAttendingMs = botCount > 0 ? botSumMs / botCount : 0;
+
+    // Para el embudo: contactos del rango filtrado atendidos por un agente real
+    // (chatIds únicos). Siempre ⊆ Total Contactos, así el embudo es monotónico.
+    // Nota: distinto de `attendedConversations`, que cuenta SESIONES (open+closed)
+    // y puede superar el nº de contactos por re-aperturas o múltiples sesiones.
+    const attendedContactsSet = new Set<string>();
+    for (const item of filteredAgentItems) {
+      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
+      if (item.chatId) attendedContactsSet.add(item.chatId);
+    }
+
     return {
       ...base,
       totalSessions: totalSessionsCount,
       totalContacts: filteredChats.length,
       attendedConversations,
+      attendedContacts: attendedContactsSet.size,
       closedConversations,
       avgFirstResponseMs: avgFirstResponseMsAll,
       avgAttendingMs,
@@ -583,7 +595,7 @@ export default function DashboardPage() {
             <TopDestinationsBarChart data={topDestinations} />
             <ContactsFunnelChart
               totalContacts={kpis.totalContacts}
-              attendedConversations={kpis.attendedConversations}
+              attendedConversations={kpis.attendedContacts}
               salesCount={kpis.totalSalesCount}
             />
           </div>
