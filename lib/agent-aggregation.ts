@@ -93,8 +93,11 @@ export function aggregateByAgent(items: AgentMetricsItem[]): AgentSummary[] {
       acc.firstResponseSumMs += firstRespMs;
       acc.firstResponseCount += 1;
     }
+    // Excluir sesiones cerradas sin mensajes (p.ej. typification "no_contesta"):
+    // se abren y cierran al instante, su avgAttendingTime ~0-1s no es atención
+    // real y distorsiona el promedio cuando hay pocas sesiones.
     const attendingMs = parseNum(item.avgAttendingTime) * 1000;
-    if (attendingMs > 0) {
+    if (attendingMs > 0 && parseNum(item.closedWithNoMessages) === 0) {
       acc.attendingSumMs += attendingMs;
       acc.attendingCount += 1;
     }

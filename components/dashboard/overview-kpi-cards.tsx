@@ -194,7 +194,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         </CardHeader>
         <CardContent>
           <p className="text-lg font-semibold tabular-nums">
-            {formatDuration(kpis.avgFirstResponseMs)}
+            {kpis.avgFirstResponseMs > 0 ? formatDuration(kpis.avgFirstResponseMs) : "—"}
           </p>
         </CardContent>
       </Card>
@@ -208,7 +208,7 @@ export function OverviewKpiCards({ kpis }: OverviewKpiCardsProps) {
         </CardHeader>
         <CardContent>
           <p className="text-lg font-semibold tabular-nums">
-            {formatDuration(kpis.avgAttendingMs)}
+            {kpis.avgAttendingMs > 0 ? formatDuration(kpis.avgAttendingMs) : "—"}
           </p>
         </CardContent>
       </Card>
