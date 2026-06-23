@@ -396,6 +396,47 @@ export default function DashboardPage() {
     [agentItems],
   );
 
+  // Para el chart "Conversaciones por agente": cuenta CHATS ÚNICOS del filtro
+  // atendidos por agente (1 por chat, sin doble conteo abierto+cerrado, sin
+  // sesiones fuera del filtro), para que el total coincida con "Total Contactos".
+  // Cada chat se asigna a un solo agente (el que lo cerró si hay cierre).
+  const agentConversations = useMemo(() => {
+    const byChat = new Map<string, { agent: string; closed: boolean }>();
+    for (const item of filteredAgentItems) {
+      const name = (item.agentName ?? "").trim();
+      if (!name || EXCLUDED_AGENT_NAMES.has(name)) continue;
+      if (!item.chatId) continue;
+      const closed = Number(item.closedSessions) > 0;
+      const prev = byChat.get(item.chatId);
+      if (!prev) {
+        byChat.set(item.chatId, { agent: name, closed });
+      } else if (closed && !prev.closed) {
+        // priorizar el agente que cerró la conversación
+        prev.closed = true;
+        prev.agent = name;
+      }
+    }
+    const agg = new Map<string, { closed: number; open: number }>();
+    for (const { agent, closed } of byChat.values()) {
+      const e = agg.get(agent) ?? { closed: 0, open: 0 };
+      if (closed) e.closed += 1;
+      else e.open += 1;
+      agg.set(agent, e);
+    }
+    return [...agg.entries()]
+      .map(([agentName, e]) => ({
+        agentName,
+        closedConversations: e.closed,
+        openConversations: e.open,
+      }))
+      .sort(
+        (a, b) =>
+          b.closedConversations +
+          b.openConversations -
+          (a.closedConversations + a.openConversations),
+      );
+  }, [filteredAgentItems]);
+
   const avgFirstResponseMsAll = useMemo(() => {
     let sumMs = 0;
     let count = 0;
@@ -419,7 +460,9 @@ export default function DashboardPage() {
       (s, a) => s + a.closedConversations + a.openConversations,
       0,
     );
-    const closedConversations = agentsAll.reduce(
+    // Cerradas y atendidas a nivel CONTACTO (chats únicos del filtro), mismo
+    // criterio que el chart "Conversaciones por agente" → card y chart coinciden.
+    const closedConversations = agentConversations.reduce(
       (s, a) => s + a.closedConversations,
       0,
     );
@@ -463,22 +506,20 @@ export default function DashboardPage() {
     }
     const avgBotAttendingMs = botCount > 0 ? botSumMs / botCount : 0;
 
-    // Para el embudo: contactos del rango filtrado atendidos por un agente real
-    // (chatIds únicos). Siempre ⊆ Total Contactos, así el embudo es monotónico.
-    // Nota: distinto de `attendedConversations`, que cuenta SESIONES (open+closed)
-    // y puede superar el nº de contactos por re-aperturas o múltiples sesiones.
-    const attendedContactsSet = new Set<string>();
-    for (const item of filteredAgentItems) {
-      if (EXCLUDED_AGENT_NAMES.has((item.agentName ?? "").trim())) continue;
-      if (item.chatId) attendedContactsSet.add(item.chatId);
-    }
+    // Para el embudo y la card "atendidas": contactos del filtro atendidos por
+    // agente (chats únicos), mismo criterio que el chart "Conversaciones por
+    // agente" → todo coincide. Siempre ⊆ Total Contactos (embudo monotónico).
+    const attendedContacts = agentConversations.reduce(
+      (s, a) => s + a.closedConversations + a.openConversations,
+      0,
+    );
 
     return {
       ...base,
       totalSessions: totalSessionsCount,
       totalContacts: filteredChats.length,
       attendedConversations,
-      attendedContacts: attendedContactsSet.size,
+      attendedContacts,
       closedConversations,
       avgFirstResponseMs: avgFirstResponseMsAll,
       avgAttendingMs,
@@ -492,6 +533,7 @@ export default function DashboardPage() {
     totalSessionsCount,
     agents,
     agentsAll,
+    agentConversations,
     avgFirstResponseMsAll,
   ]);
 
@@ -602,7 +644,7 @@ export default function DashboardPage() {
           <AnnualContactsLineChart data={annualData} loading={annualLoading} />
           <div className="grid gap-4 md:grid-cols-2">
             <ChannelsPieChart data={channelCounts} />
-            <AgentSessionsBarChart agents={agentsAll} limit={8} />
+            <AgentSessionsBarChart agents={agentConversations} limit={8} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ContactScheduleHeatmap

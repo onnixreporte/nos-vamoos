@@ -10,10 +10,15 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import type { AgentSummary } from "@/types/botmaker";
+interface AgentBar {
+  agentName: string;
+  agentId?: string;
+  closedConversations: number;
+  openConversations: number;
+}
 
 interface AgentSessionsBarChartProps {
-  agents: AgentSummary[];
+  agents: AgentBar[];
   limit?: number;
 }
 
