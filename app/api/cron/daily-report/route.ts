@@ -8,6 +8,9 @@
  *
  * Env requeridas: CRON_SECRET, BOTMAKER_ACCESS_TOKEN, REPORT_CHANNEL_ID,
  * REPORT_TEMPLATE_NAME, REPORT_CONTACT_ID.
+ *
+ * REPORT_CONTACT_ID admite varios números separados por coma → se envía la
+ * plantilla a cada destinatario.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
@@ -71,50 +74,74 @@ export async function GET(request: NextRequest) {
       ? (channelId as string).split("-whatsapp-")[1]
       : (channelId as string);
 
-    const notificationRes = await fetchWithRetry(BOTMAKER_INTENT_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "access-token": botmakerToken as string,
-      },
-      timeoutMs: 60_000,
-      // 1 solo retry: un reintento sobre un POST ya procesado duplicaría el envío
-      maxRetries: 1,
-      body: JSON.stringify({
-        chatPlatform: "whatsapp",
-        chatChannelNumber,
-        platformContactId: contactId,
-        ruleNameOrId: templateName,
-        clientPayload: `reporte-diario-${dateKey}`,
-        params: {
-          // Variable {{1}} del body si la plantilla la usa
-          fecha: dateLabel,
-        },
-      }),
-    });
+    // REPORT_CONTACT_ID puede ser una lista separada por coma → un envío por número
+    const contactIds = (contactId as string)
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
 
-    if (!notificationRes.ok) {
-      const details = await notificationRes.text();
-      console.error(
-        "[daily-report] Botmaker notification error:",
-        notificationRes.status,
-        details,
-      );
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Botmaker API error: ${notificationRes.status}`,
-          details,
+    const results: Array<{
+      contactId: string;
+      ok: boolean;
+      status?: number;
+      details?: string;
+    }> = [];
+
+    for (const platformContactId of contactIds) {
+      const notificationRes = await fetchWithRetry(BOTMAKER_INTENT_URL, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "access-token": botmakerToken as string,
         },
-        { status: 502 },
+        timeoutMs: 60_000,
+        // 1 solo retry: un reintento sobre un POST ya procesado duplicaría el envío
+        maxRetries: 1,
+        body: JSON.stringify({
+          chatPlatform: "whatsapp",
+          chatChannelNumber,
+          platformContactId,
+          ruleNameOrId: templateName,
+          clientPayload: `reporte-diario-${dateKey}`,
+          params: {
+            // Variable {{1}} del body si la plantilla la usa
+            fecha: dateLabel,
+          },
+        }),
+      });
+
+      if (!notificationRes.ok) {
+        const details = await notificationRes.text();
+        console.error(
+          "[daily-report] Botmaker notification error:",
+          platformContactId,
+          notificationRes.status,
+          details,
+        );
+        results.push({
+          contactId: platformContactId,
+          ok: false,
+          status: notificationRes.status,
+          details,
+        });
+        continue;
+      }
+
+      const notification = await notificationRes.json().catch(() => null);
+      console.log(
+        "[daily-report] Notificación enviada:",
+        platformContactId,
+        notification,
       );
+      results.push({ contactId: platformContactId, ok: true });
     }
 
-    const notification = await notificationRes.json().catch(() => null);
-    console.log("[daily-report] Notificación enviada:", notification);
-
-    return NextResponse.json({ ok: true, date: dateKey, notification });
+    const allOk = results.every((r) => r.ok);
+    return NextResponse.json(
+      { ok: allOk, date: dateKey, results },
+      { status: allOk ? 200 : 502 },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[daily-report] Error:", err);
